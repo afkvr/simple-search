@@ -1,0 +1,103 @@
+#ifndef _PEER_HPP_INCLUDED_
+#define _PEER_HPP_INCLUDED_
+
+#include <iostream>
+#include <queue>
+#include <thread>
+#include <zmq.hpp>
+#include <list>
+#include <mutex>
+#include <atomic>
+
+#include "config.h"
+#include "jsonhandle.hpp"
+#include "signinghandle.hpp"
+
+namespace bitmile {
+class Peer {
+	public:
+		Peer();
+		~Peer();
+
+		bool run();
+	private:
+		bool setupWorker(zmq::context_t*);
+		std::string getPublicIp();
+
+		/*
+		 * Because we use P2P comunication, so we need keep all node ip  in network
+		 */
+		void syncPeerListRequest (zmq::context_t*, bitmile::Json&);
+		void syncPeerListResponse (zmq::socket_t*, bitmile::Json&);
+		
+		/* 
+		 * For new instance join to network
+		 * it need notify itself to boss instance
+		 * network will keep ip to common list then notify to all node in network
+		 */
+		void notifyConnection (zmq::context_t*);
+		void getPeerListResponse(zmq::socket_t*, bitmile::Json&);
+
+
+		/*
+		 * handle request from client app
+		 */
+		void clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mess);
+		
+		/*
+		 * request other peer signing message
+		 */
+		void peerSigningMessageReq(zmq::socket_t*,bitmile::Json&);
+
+		/*
+		 * inverst blind message request
+		 */
+		void inverseBlindNumberRequest(zmq::context_t*, bitmile::Json&);
+
+		/*
+		 * Vote instance will use for caculate private key
+		 * logic: 
+		 * 	1. generate random number
+		 * 	2. broacast to other instances in network
+		 * 	3. if random number of instance is biggest, then use for caculate process
+		 * <-- this logic will change in future
+		 */
+		void voteRequest(zmq::socket_t*,bitmile::Json&);
+
+		// broadcast message
+		void broadcastMessage(bitmile::Json&);
+
+		// utils
+		static void handleMessage(Peer*, worker_t*, zmq::context_t*);
+		static std::string concatTcpIp(const char* ip, const char* port);
+		static void ssend (zmq::socket_t*, std::string&);
+		static long long genVoteNumber();
+	private:
+		//std::queue<long long> thread_ids;
+		std::queue<worker_t*> worker_list;
+
+		// keep ips of peer node machine in network;
+		// address value was string
+		std::list<std::string> peer_ips;
+
+		// keep mapper between app client identify and signing data
+		// pair {identify :  signing_data}
+		std::map<std::string, std::string> signing_session;
+
+		// keep flag check peer node was setup before run
+		std::atomic<bool> setupFirst;
+		
+		std::string ip;
+		std::mutex mutex;
+
+		bitmile::SigningHandle signingHandle;
+
+		/* 
+		 * keep mapper between app client identify and list challenge number for each session
+		 * pair {identify : [{peer_ip, vote_number}, ...]}
+		 */
+		std::map<std::string, std::map<std::string, long long>> challenge_numbers;
+	};
+}
+
+#endif
