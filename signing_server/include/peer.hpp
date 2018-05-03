@@ -50,11 +50,6 @@ class Peer {
 		void peerSigningMessageReq(zmq::socket_t*,bitmile::Json&);
 
 		/*
-		 * inverst blind message request
-		 */
-		void inverseBlindNumberRequest(zmq::context_t*, bitmile::Json&);
-
-		/*
 		 * Vote instance will use for caculate private key
 		 * logic: 
 		 * 	1. generate random number
@@ -64,14 +59,20 @@ class Peer {
 		 */
 		void voteRequest(zmq::socket_t*,bitmile::Json&);
 
+		/*
+		 * caculate signature from all peer in network
+		 * process happen in winner node after vote challange
+		 */
+		void caculateSignatureMessageRequest(zmq::socket_t*, bitmile::Json&);
+
 		// broadcast message
 		void broadcastMessage(bitmile::Json&);
 
 		// utils
-		static void handleMessage(Peer*, worker_t*, zmq::context_t*);
-		static std::string concatTcpIp(const char* ip, const char* port);
-		static void ssend (zmq::socket_t*, std::string&);
-		static long long genVoteNumber();
+		static inline void handleMessage(Peer*, worker_t*, zmq::context_t*);
+		static inline std::string concatTcpIp(const char* ip, const char* port);
+		static inline void ssend (zmq::socket_t*, std::string&);
+		static inline long long genVoteNumber();
 	private:
 		//std::queue<long long> thread_ids;
 		std::queue<worker_t*> worker_list;
@@ -81,8 +82,13 @@ class Peer {
 		std::list<std::string> peer_ips;
 
 		// keep mapper between app client identify and signing data
-		// pair {identify :  signing_data}
+		// pair {identify : signing_data}
 		std::map<std::string, std::string> signing_session;
+
+		// keep mapper betweeb app client identify and partial signature data
+		// signature data will be remove when caculate successful and send to genarator sever group
+		// pair {identify : list_partial_signature_data}
+		std::map<std::string, std::list<std::string>> signature_data_session;
 
 		// keep flag check peer node was setup before run
 		std::atomic<bool> setupFirst;

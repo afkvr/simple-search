@@ -14,12 +14,13 @@
 /*
  * BOSS IP of group peer machine
  */
-#define BOSS_IP ""
+#define BOSS_IP "192.168.1.95"
 
 /*
  * Boss ip of instance in generater Server
  */
-#define GENERATOR_BOSS_IP ""
+#define GENERATOR_BOSS_IP "192.168.1.95" // <-- fake
+#define GENERATOR_BOSS_PORT "6666"
 
 /*
  * Key for auth friend server
@@ -52,11 +53,17 @@ struct worker_t {
 
 // define message type
 static const char* mess_types[] = {
+	// For signing server
 	"GET_PEER_LIST",
 	"SYNC_PEER_LIST",
 	"VOTE_MESSAGE",
 	"CLIENT_SIGNING_MESSAGE",
-	"PEER_SIGNING_MESSAGE"
+	"PEER_SIGNING_MESSAGE",
+	"NOTYFY_CONNECTION",
+	"CACULATE_SIGNATURE_MESSAGE",
+
+	// For generator server
+	"INVERSE_BLIND_MESSAGE"
 };
 
 enum MESS_TYPE {
@@ -64,7 +71,12 @@ enum MESS_TYPE {
 	SYNC_PEER_LIST,
 	VOTE_MESSAGE,
 	CLIENT_SIGNING_MESSAGE,
-	PEER_SIGNING_MESSAGE
+	PEER_SIGNING_MESSAGE,
+	NOTYFY_CONNECTION,
+	CACULATE_SIGNATURE_MESSAGE,
+
+	// For generator server
+	INVERSE_BLIND_MESSAGE
 };
 
 }

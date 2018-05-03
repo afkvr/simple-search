@@ -18,7 +18,8 @@ class NumberHandle {
 		void getListBlindNumber(std::list<std::string>&);
 		std::string getRandomBlindNumber();
 		void getListInverseNumber(std::list<std::string>&);
-
+		int genRandomNum(int max);
+		
 	private:
 		// keep list of blind number
 		// first gen list when setup

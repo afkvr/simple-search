@@ -2,14 +2,15 @@
 #include "utils.hpp"
 
 // for rand number
-#include <ctime>
+#include <limits>
+#include <random>
 #include <cstdlib>
 
 #define  inproc(name) "inproc://" name
 
 namespace bitmile {
 Peer::Peer () {
-	setupFirst.store(true, std::memory_order_release); // <== fake value
+	setupFirst.store(false, std::memory_order_release); // <== fake value
 }
 
 Peer::~Peer() {
@@ -94,7 +95,6 @@ bool Peer::run() {
  */
 void Peer::syncPeerListRequest (zmq::context_t* context_ptr, bitmile::Json& ips) {
 	assert(context_ptr);
-	zmq::socket_t client_socket(*context_ptr, ZMQ_REQ);
 
 	/*
 	* message format for sync request
@@ -105,21 +105,15 @@ void Peer::syncPeerListRequest (zmq::context_t* context_ptr, bitmile::Json& ips)
 	* }
 	*/
 	bitmile::Json mess_sync;
-	mess_sync["type"] 		= SYNC_PEER_LIST;
+	mess_sync["type"] 		= mess_types[SYNC_PEER_LIST];
 	mess_sync["auth_key"] 	= AUTH_KEY;
 	mess_sync["peer_list"]  = ips;
 
-	std::string dump_mess = mess_sync.dump();
-
-	for (bitmile::Json::iterator i = ips.begin(); i != ips.end(); i++) {
-		client_socket.connect(Peer::concatTcpIp(i->dump().c_str(), PORT_).c_str());
-		ssend(&client_socket, dump_mess);
-	}
-
-	client_socket.close();
+	broadcastMessage(mess_sync);
 }
 
 void Peer::syncPeerListResponse (zmq::socket_t* socket_ptr, bitmile::Json& messJson) {
+	std::cout << "Peer::syncPeerListResponse mess dump " << messJson.dump() << std::endl;
 	assert(socket_ptr);
 
 	/*
@@ -137,12 +131,13 @@ void Peer::syncPeerListResponse (zmq::socket_t* socket_ptr, bitmile::Json& messJ
 	// sync list
 	peer_ips.clear();
 	for (bitmile::Json::iterator i = messJson["peer_list"].begin(); i != messJson["peer_list"].end(); i++) {
-		peer_ips.push_back(i->dump());
+		std::cout << "Peer::syncPeerListResponse ip " << i->get<std::string>() << std::endl;
+		peer_ips.push_back(i->get<std::string>().c_str());
 	}
 }
 
 void Peer::notifyConnection (zmq::context_t* context) {
-	std::cout << "Peer::getPeerListRequest " << std::endl;
+	std::cout << "Peer::NOTYFY_CONNECTION " << std::endl;
 	/*
 	* message format for send 
 	* {
@@ -163,7 +158,7 @@ void Peer::notifyConnection (zmq::context_t* context) {
 	zmq::socket_t req_socket(*context, ZMQ_REQ);
 
 	// connect to boss node
-	req_socket.connect(BOSS_IP);
+	req_socket.connect(bitmile::Peer::concatTcpIp(BOSS_IP,PORT_).c_str());
 
 	// notify its ip to boss instance
 	ssend(&req_socket, dump_mess);
@@ -189,7 +184,6 @@ void Peer::getPeerListResponse(zmq::socket_t* socket_ptr, bitmile::Json& mess) {
 	if (!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_KEY))
 		return;
 
-
 	bitmile::Json mess_response;
 
 	bool is_exists = false; // <== check ip was exists in list ips
@@ -204,6 +198,7 @@ void Peer::getPeerListResponse(zmq::socket_t* socket_ptr, bitmile::Json& mess) {
 	if (!is_exists) {
 		std::lock_guard<std::mutex> lock(mutex);
 		peer_ips.push_back(from_ip);
+		array.push_back(from_ip);
 	}
 
 	/*
@@ -214,13 +209,13 @@ void Peer::getPeerListResponse(zmq::socket_t* socket_ptr, bitmile::Json& mess) {
 	*   "peer_list": []		<== list ip
 	* }
 	*/
-	mess_response["type"] 		= type;
+	mess_response["type"] 		= mess["type"];
 	mess_response["auth_key"] 	= AUTH_KEY;
 	mess_response["peer_list"] 	= array;
 
 	// sync list node ip with other node
 	zmq::context_t context(1);
-	
+
 	if (!is_exists) {
 		syncPeerListRequest(&context, array);
 	}
@@ -243,6 +238,13 @@ void Peer::handleMessage(Peer* peer, worker_t* worker, zmq::context_t* context_p
 	if (!peer->setupFirst.load(std::memory_order_acquire)) {
 		std::lock_guard<std::mutex> lock(peer->mutex);
 		
+		// ignore if boss ip is itself
+		if (bitmile::quickCompareStr(peer->ip.c_str(), BOSS_IP)) {
+			peer->peer_ips.push_back(peer->ip);
+			peer->setupFirst.store(true, std::memory_order_release);
+			goto run;
+		}
+
 		// check again
 		if (peer->setupFirst.load(std::memory_order_acquire))
 			goto run;
@@ -259,60 +261,165 @@ run:
 		// convert request data to json
 		bitmile::Json mess((char*)(request.data()));
 
-		// request peer list from other node
-		if (mess.getType() == GET_PEER_LIST) {
+		// notify sync peer list from other node
+		int mess_type = mess.getType();
+
+		if (mess_type == GET_PEER_LIST) {
 			peer->getPeerListResponse (&rep_socket, mess);
-			continue;
 		}
 
-		// notify sync peer list from other node
-		if (mess.getType() == SYNC_PEER_LIST) {
-			peer->getPeerListResponse (&rep_socket, mess);
-			continue;
+		else if (mess_type == SYNC_PEER_LIST) {
+			peer->syncPeerListResponse(&rep_socket, mess);
 		}
 
 		// request for new vote, find one in group will use for decrypt process
-		if (mess.getType() == VOTE_MESSAGE) {
+		else if (mess_type == VOTE_MESSAGE) {
 			peer->voteRequest(&rep_socket, mess);
-			continue;
 		}
 
 		// request signing message from client app
-		if (mess.getType() == CLIENT_SIGNING_MESSAGE) {
+		else if (mess_type == CLIENT_SIGNING_MESSAGE) {
 			peer->clientSigningMessageReq(&rep_socket, mess);
-			continue;
 		}
 
 		// request signing message from peer node in network
-		if (mess.getType() == PEER_SIGNING_MESSAGE) {
+		else if (mess_type == PEER_SIGNING_MESSAGE) {
 			peer->peerSigningMessageReq(&rep_socket, mess);
-			continue;
 		}
+
+		// caculate signature with winner in network after vote
+		else if (mess_type == CACULATE_SIGNATURE_MESSAGE) {
+			peer->caculateSignatureMessageRequest(&rep_socket, mess);
+		}
+
+		zmq::message_t reponse(1);
+		rep_socket.send(reponse);
 	}
 }
 
+# define END_CHARATOR '\0'
 void Peer::ssend (zmq::socket_t* socket_ptr, std::string& data) {
-	zmq::message_t mess(data.size());
+	long long mess_real_size = data.size()+1; // <== one byte for end charator
+	zmq::message_t mess(mess_real_size);
 	memcpy(mess.data(), data.c_str(), data.size());
+
+	// set end charator for string
+	char* char_ptr = (char*)mess.data();
+	char_ptr[data.size()] = END_CHARATOR;
+
 	socket_ptr->send(mess);
 }
 
 std::string Peer::concatTcpIp(const char* ip, const char* port) {
-	return std::string("tcp://") + ip + std::string(":" PORT_);
+	return std::string("tcp://") + ip + std::string(":") + std::string(port);
+}
+
+void Peer::caculateSignatureMessageRequest(zmq::socket_t* socket_ptr, bitmile::Json& mess) {
+	std::cout << "Peer::caculateSignatureMessageRequest start " << mess.dump() << std::endl;
+	assert(socket_ptr);
+
+	/*
+	* message format for response
+	* {
+	*  	"type": CACULATE_SIGNATURE_MESSAGE
+	*	"identify" : string <== continuous charactor have long length
+	* 	"from_ip": string  
+	*	"auth_key": string 	<== use for check is trust client
+	* 	"data" : string <== vote number use for compare
+	*	"callback_ip" : string <== ip of client
+	* }
+	*/
+	std::string auth_key_str = mess["auth_key"];
+
+	// if not trust, dont continuous process
+	if (!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_KEY))
+		return;
+
+	std::string identify = mess["identify"];
+	std::string data 	 = mess["data"];
+
+	if (!identify.size())
+		return;
+
+	std::map<std::string, std::list<std::string>>::iterator i = signature_data_session.find(identify);
+
+	// if pair of identify not exists before
+	if (i == signature_data_session.end()) {
+		std::pair<std::string, std::list<std::string>> pair(identify, std::list<std::string>());
+		pair.second.push_back(data);
+		signature_data_session.insert(pair);
+	}
+	else {
+		i->second.push_back(data);
+	}
+
+	// get again
+	i = signature_data_session.find(identify);
+
+	// if num of partial signature data from other node in network not equal size with size of peer list
+	// dont continous process
+	if (i->second.size() < (peer_ips.size()-1)) // decreate one for ip of itself
+		return;
+
+	// caculate signature message and send to generator_server
+	{
+
+		// send signature data to generator node
+		/*
+		* message format for response
+		* {
+		*  	"type": INVERSE_BLIND_MESSAGE
+		*	"identify" : string <== continuous charactor have long length
+		*	"auth_key": string 	<== use for check is trust client
+		* 	"data" : string  	<== signature data
+		*	"callback_ip" : string <== ip of client
+		* }
+		*/
+		bitmile::Json inverse_mess_req;
+		inverse_mess_req["type"] = mess_types[INVERSE_BLIND_MESSAGE];
+		inverse_mess_req["identify"] = identify;
+		inverse_mess_req["auth_key"] = AUTH_KEY;
+		inverse_mess_req["data"] = mess["data"]; // <== fake, need change to caculated value in future
+		inverse_mess_req["callback_ip"] = mess["callback_ip"];
+
+		// create empty blind_server_ips for
+		bitmile::Json blind_server_ips = {};
+		inverse_mess_req["blind_server_ips"] = blind_server_ips;
+
+		// TODO SOMETHING
+		
+		// send to generator server group
+		
+		std::string mess_dump = inverse_mess_req.dump();
+		zmq::context_t context(1);
+		zmq::socket_t socket(context, ZMQ_REQ);
+
+		std::cout << "Peer::caculateSignatureMessageRequest send to signature server " << mess_dump << std::endl;
+		std::cout << "generator server  " << bitmile::Peer::concatTcpIp(GENERATOR_BOSS_IP, GENERATOR_BOSS_PORT).c_str() << std::endl;
+		
+		// connect to generator boss 
+		socket.connect(bitmile::Peer::concatTcpIp(GENERATOR_BOSS_IP, GENERATOR_BOSS_PORT).c_str());
+		ssend(&socket, mess_dump); // <== fake
+		socket.close();
+
+		// clear session
+		signature_data_session.erase(identify);
+	}
 }
 
 /*
  * Generate blind message from random blind number
  */
 void Peer::clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mess) {
+	std::cout << "Peer::clientSigningMessageReq start" << mess.dump() << std::endl;
 	assert(socket_ptr);
 
 	/*
 	* message format for recv
 	* {
-	*  	"type": CLIENT_SIGNING_MESSAGE_REQ
-	*	"identity": string  <== continuous charactor have long length
-	* 	"call_back_ip": string  <== after signing process successful, send signing data back to call_back_ip 
+	*  	"type": CLIENT_SIGNING_MESSAGE
+	*	"identify": string  <== continuous charactor have long length
+	* 	"callback_ip": string  <== after signing process successful, send signing data back to callback_ip 
 	*	"auth_key": string 	<== use for check is trust client
 	*	"data": string 	<== message use for blind process
 	* }
@@ -320,8 +427,7 @@ void Peer::clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mes
 	std::string auth_key_str = mess["auth_key"];
 
 	// if not trust, dont continuous process
-	if (!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_CLIENT_KEY) || 
-		!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_KEY)) 
+	if (!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_CLIENT_KEY))
 		return;
 
 	std::string identify = mess["identify"];
@@ -353,13 +459,14 @@ void Peer::clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mes
 		*  	"type": PEER_SIGNING_MESSAGE
 		* 	"identify": string  <== continuous charactor have long length  
 		*	"auth_key": string 	<== use for check is trust client
-		* 	"call_back_ip": string  <== after signing process successful, send signing data back to call_back_ip 
+		* 	"callback_ip": string  <== after signing process successful, send signing data back to callback_ip 
 		*	"data": string 	<== message use for blind process
 		* }
 		*/
 		mess_peer_request["type"] = mess_types[PEER_SIGNING_MESSAGE];
 		mess_peer_request["identify"] = mess["identify"];
 		mess_peer_request["auth_key"] = AUTH_KEY;
+		mess_peer_request["callback_ip"] = mess["callback_ip"];
 		mess_peer_request["data"] = mess["data"]; // fake, need change in future, after add logic for interact with mess data
 		broadcastMessage(mess_peer_request);
 	}
@@ -388,6 +495,7 @@ void Peer::clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mes
 		*	"identity" : string <== continuous charactor have long length
 		* 	"from_ip": string  
 		*	"auth_key": string 	<== use for check is trust client
+		*	"callback_ip": string
 		* 	"vote" : string <== vote number use for compare 
 		* }
 		*/
@@ -396,26 +504,28 @@ void Peer::clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mes
 		mess_peer_request["identify"] = mess["identify"];
 		mess_peer_request["auth_key"] = AUTH_KEY;
 		mess_peer_request["from_ip"] = ip;
+		mess_peer_request["callback_ip"] = mess["callback_ip"];
 		mess_peer_request["vote"] =  std::to_string(vote_num);
 		broadcastMessage(mess_peer_request);
 	}
 }
 
 void Peer::broadcastMessage(bitmile::Json& mess) {
+	std::cout << "Peer::broadcastMessage mess " << mess.dump() << std::endl;
 	std::string mess_dump = mess.dump();
 
 	std::list<std::string>::iterator i = peer_ips.begin();
 	zmq::context_t context(1);
-	zmq::socket_t client_socket(context, ZMQ_REQ);
 	std::string tcpIp;
 
 	for (;i != peer_ips.end(); i++) {
-
 		// dont send event to itself
 		if (bitmile::quickCompareStr((*i).c_str(), ip.c_str()))
 			continue;
 
+		zmq::socket_t client_socket(context, ZMQ_REQ);
 		tcpIp = Peer::concatTcpIp((*i).c_str(),PORT_);
+		std::cout << "Peer::broadcastMessage ip  " << tcpIp << std::endl;
 		client_socket.connect(tcpIp.c_str());
 		ssend(&client_socket, mess_dump);
 		client_socket.close();
@@ -426,6 +536,8 @@ void Peer::broadcastMessage(bitmile::Json& mess) {
  *  Request signing message from other peer
  */
 void Peer::peerSigningMessageReq(zmq::socket_t* socket_ptr,bitmile::Json& mess) {
+	std::cout << "Peer::peerSigningMessageReq start " << mess.dump() << std::endl;
+
 	assert(socket_ptr);
 
 	/*
@@ -434,7 +546,7 @@ void Peer::peerSigningMessageReq(zmq::socket_t* socket_ptr,bitmile::Json& mess) 
 	*  	"type": PEER_SIGNING_MESSAGE
 	* 	"identify": string  <== continuous charactor have long length  
 	*	"auth_key": string 	<== use for check is trust client
-	* 	"call_back_ip": string  <== after signing process successful, send signing data back to call_back_ip 
+	* 	"callback_ip": string  <== after signing process successful, send signing data back to callback_ip 
 	*	"data": string 	<== message use for blind process
 	* }
 	*/
@@ -485,7 +597,8 @@ send:
 		*	"identify" : string <== continuous charactor have long length
 		* 	"from_ip": string  
 		*	"auth_key": string 	<== use for check is trust client
-		* 	"vote" : string <== vote number use for compare 
+		* 	"vote" : string <== vote number use for compare
+		*	"callback_ip": string 
 		* }
 		*/
 		bitmile::Json mess_peer_request;
@@ -494,12 +607,16 @@ send:
 		mess_peer_request["auth_key"] = AUTH_KEY;
 		mess_peer_request["from_ip"] = ip;
 		mess_peer_request["vote"] =  std::to_string(vote_num);
+		mess_peer_request["callback_ip"] = mess["callback_ip"];
 		broadcastMessage(mess_peer_request);
 	}
 }
 
+// need more process
 void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::Json& mess) {
+	std::cout << "Peer::voteRequest start " << mess.dump() << std::endl;
 	assert(socket_ptr);
+	
 	/*
 	* message format for response
 	* {
@@ -507,6 +624,7 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::Json& mess) {
 	*	"identify" : string <== continuous charactor have long length
 	* 	"from_ip": string  
 	*	"auth_key": string 	<== use for check is trust client
+	*	"callback_ip": string
 	* 	"vote" : string <== vote number use for compare 
 	* }
 	*/
@@ -514,20 +632,101 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::Json& mess) {
 	if (!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_KEY)) // <== not trust, dont continuous process
 		return;
 
-	std::string identify = mess["identity"];
+	std::string identify = mess["identify"];
 	std::string from_ip = mess["from_ip"];
 	
 	long long vote_num;
 	std::string vote_string = mess["vote"];
 	sscanf(vote_string.c_str(), "%lld", &vote_num);
-}
 
-void Peer::inverseBlindNumberRequest(zmq::context_t* context_ptr, bitmile::Json& mess) {
+	// add vote number to map
+	std::pair<std::string, long long> ip_vote(from_ip, vote_num);
+	std::map<std::string, std::map<std::string, long long>>::iterator i = challenge_numbers.find(identify);
+	if (i == challenge_numbers.end()){
+		std::pair<std::string, std::map<std::string, long long>> pair_challenge(identify, std::map<std::string, long long>());
+		pair_challenge.second.insert(ip_vote);
+		challenge_numbers.insert(pair_challenge);
+	}
+	else {
+		i->second.insert(ip_vote);
+	}
 
+	// refind again, if still dont exists in session list , return
+	if (i == challenge_numbers.end() && (i = challenge_numbers.find(identify)) == challenge_numbers.end()) {
+		return;
+	}
+
+
+	//dont process if list size of  challenge  number less than num of peer ips in network
+	if (i->second.size() != peer_ips.size())
+		return;
+
+	// find winner
+	std::map<std::string, long long>::iterator winner = i->second.begin();
+	for (std::map<std::string, long long>::iterator j =  ++i->second.begin(); j != i->second.end(); j++) {
+		if (winner->second < j->second)
+			winner = j;
+	}
+
+	// if winner is itself , dont continous process
+	if (bitmile::quickCompareStr(ip.c_str(),winner->first.c_str())) {
+		signature_data_session.erase(identify);
+		return;
+	}
+
+	// send signature data to win node (have biggest number)
+	/*
+	* message format for response
+	* {
+	*  	"type": CACULATE_SIGNATURE_MESSAGE
+	*	"identify" : string <== continuous charactor have long length
+	* 	"from_ip": string  
+	*	"auth_key": string 	<== use for check is trust client
+	* 	"data" : string <== vote number use for compare
+	*	"callback_ip" : string <== ip of client
+	* }
+	*/
+	std::map<std::string, std::string>::iterator partial_signature_data = signing_session.find(identify);
+	if (partial_signature_data == signing_session.end())
+		goto clear_session;
+ 	
+ 	{
+		zmq::context_t context(1);
+		zmq::socket_t socket(context, ZMQ_REQ);
+		std::cout << "caculate signature data " << bitmile::Peer::concatTcpIp(winner->first.c_str(),PORT_) << std::endl;
+
+		socket.connect(bitmile::Peer::concatTcpIp(winner->first.c_str(),PORT_).c_str());
+
+		bitmile::Json signature_data;
+		signature_data["type"] = mess_types[CACULATE_SIGNATURE_MESSAGE];
+		signature_data["identify"] = identify;
+		signature_data["from_ip"] = ip;
+		signature_data["auth_key"] = AUTH_KEY;
+		signature_data["data"] =  partial_signature_data->second;
+		signature_data["callback_ip"] = mess["callback_ip"];
+
+		std::string dump_mess = signature_data.dump();
+		ssend(&socket, dump_mess);
+
+		socket.close();
+	}
+
+clear_session:
+	// clear challenge pair with this identify
+	{
+		challenge_numbers.erase(identify);
+		signing_session.erase(identify);
+	}
 }
 
 long long Peer::genVoteNumber() {
-	srand(time(NULL));
-	return rand();
+	std::random_device rd;
+
+	std::default_random_engine e1(rd());
+	std::uniform_int_distribution<long long> distribution(1, std::numeric_limits<long long>::max());
+
+	long long random_val = distribution(e1);
+	std::cout << "Peer::genVoteNumber " << random_val << std::endl;
+	return random_val;
 }
 } // namespace bitmile

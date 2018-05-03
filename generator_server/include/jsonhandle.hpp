@@ -8,8 +8,6 @@
 
 #define MESSAGE_KEY_TYPE "type"
 
-extern const char* mess_types[];
-
 namespace bitmile {
 class Json : public nlohmann::json {
 	public:

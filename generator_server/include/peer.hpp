@@ -16,13 +16,6 @@
 namespace bitmile {
 class Peer {
 	public:
-		enum MESS_TYPE {
-			GET_PEER_LIST = 0,
-			SYNC_PEER_LIST,
-			BLIND_MESSAGE,
-			INVERSE_BLIND_MESSAGE
-		};
-
 		Peer();
 		~Peer();
 
@@ -45,6 +38,19 @@ class Peer {
 		void notifyConnection (zmq::context_t*);
 		void getPeerListResponse(zmq::socket_t*, bitmile::Json&);
 
+		// broadcast message
+		void broadcastMessage(bitmile::Json&);
+
+		/*
+		 * Generate and return blind number to client
+		 */
+		void clientBlindNumberRequest(zmq::socket_t*, bitmile::Json&);
+
+		/*
+		 * Generate and return blind number to client
+		 */
+		void peerBlindNumberRequest(zmq::socket_t*, bitmile::Json&);
+
 		/*
 		 * Generate blind message from random blind number
 		 */
@@ -53,7 +59,7 @@ class Peer {
 		/*
 		 * Inverse blind message from Inverse pair with blind number
 		 */
-		void inverstMessage(zmq::socket_t*,bitmile::Json&);
+		void inverseMessage(zmq::socket_t*,bitmile::Json&);
 
 		static void handleMessage(Peer*, worker_t*, zmq::context_t*);
 		static std::string concatTcpIp(const char* ip, const char* port);

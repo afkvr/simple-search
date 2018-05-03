@@ -3,13 +3,6 @@
 #include <iostream>
 #include "utils.hpp"
 
-extern const char* mess_types[] = {
-	"GET_PEER_LIST",
-	"SYNC_PEER_LIST",
-	"BLIND_MESSAGE",
-	"INVERSE_BLIND_MESSAGE"
-};
-
 namespace bitmile {
 Json::Json () : nlohmann::json() {
 }
