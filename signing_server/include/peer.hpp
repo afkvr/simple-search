@@ -27,8 +27,8 @@ class Peer {
 		/*
 		 * Because we use P2P comunication, so we need keep all node ip  in network
 		 */
-		void syncPeerListRequest (zmq::context_t*, bitmile::Json&);
-		void syncPeerListResponse (zmq::socket_t*, bitmile::Json&);
+		void syncPeerListRequest (zmq::context_t*, bitmile::JsonHandle&);
+		void syncPeerListResponse (zmq::socket_t*, bitmile::JsonHandle&);
 		
 		/* 
 		 * For new instance join to network
@@ -36,18 +36,18 @@ class Peer {
 		 * network will keep ip to common list then notify to all node in network
 		 */
 		void notifyConnection (zmq::context_t*);
-		void getPeerListResponse(zmq::socket_t*, bitmile::Json&);
+		void getPeerListResponse(zmq::socket_t*, bitmile::JsonHandle&);
 
 
 		/*
 		 * handle request from client app
 		 */
-		void clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::Json& mess);
+		void clientSigningMessageReq(zmq::socket_t* socket_ptr, bitmile::JsonHandle& mess);
 		
 		/*
 		 * request other peer signing message
 		 */
-		void peerSigningMessageReq(zmq::socket_t*,bitmile::Json&);
+		void peerSigningMessageReq(zmq::socket_t*,bitmile::JsonHandle&);
 
 		/*
 		 * Vote instance will use for caculate private key
@@ -57,16 +57,16 @@ class Peer {
 		 * 	3. if random number of instance is biggest, then use for caculate process
 		 * <-- this logic will change in future
 		 */
-		void voteRequest(zmq::socket_t*,bitmile::Json&);
+		void voteRequest(zmq::socket_t*,bitmile::JsonHandle&);
 
 		/*
 		 * caculate signature from all peer in network
 		 * process happen in winner node after vote challange
 		 */
-		void caculateSignatureMessageRequest(zmq::socket_t*, bitmile::Json&);
+		void caculateSignatureMessageRequest(zmq::socket_t*, bitmile::JsonHandle&);
 
 		// broadcast message
-		void broadcastMessage(bitmile::Json&);
+		void broadcastMessage(bitmile::JsonHandle&);
 
 		// utils
 		static inline void handleMessage(Peer*, worker_t*, zmq::context_t*);
@@ -103,6 +103,8 @@ class Peer {
 		 * pair {identify : [{peer_ip, vote_number}, ...]}
 		 */
 		std::map<std::string, std::map<std::string, long long>> challenge_numbers;
+
+		std::atomic<bool> is_Proxy;
 	};
 }
 

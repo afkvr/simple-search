@@ -1,35 +1,32 @@
 #include "jsonhandle.hpp"
 #include "config.h"
 #include <iostream>
+#include <string>
 #include "utils.hpp"
 
 namespace bitmile {
-Json::Json () : nlohmann::json() {
+JsonHandle::JsonHandle () : nlohmann::json() {
 }
 
-Json::Json (Json& other) : nlohmann::json((nlohmann::json)other) {
+JsonHandle::JsonHandle (JsonHandle& other) : nlohmann::json((nlohmann::json)other) {
 }
 
-Json::Json (std::string data) : 
+JsonHandle::JsonHandle (std::string data) : 
 nlohmann::json(nlohmann::json::parse(data.c_str())) {
 }
 
-Json::Json (const char* data) : 
+JsonHandle::JsonHandle (const char* data) : 
 nlohmann::json(nlohmann::json::parse(data)) {
 
 }
 
-Json::~Json () {
+JsonHandle::~JsonHandle () {
 }
 
-int Json::getType() {
+int JsonHandle::getType() {
 	std::string value = (*this)[MESSAGE_KEY_TYPE];
-	int size = sizeof(mess_types)/sizeof(const char*);
-
-	for (int i = 0; i < size; i++) {
-		if (bitmile::quickCompareStr(value.c_str(), mess_types[i]))
-			return i;
-	}
+	int int_value = std::stoi(value);
+	return int_value;
 }
 } // namespace bitmile
 

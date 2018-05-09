@@ -9,14 +9,14 @@
 #define MESSAGE_KEY_TYPE "type"
 
 namespace bitmile {
-class Json : public nlohmann::json {
+class JsonHandle : public nlohmann::json {
 	public:
-		Json();
-		Json(Json& other);
-		Json(std::string data);
-		Json(const char*);
+		JsonHandle();
+		JsonHandle(JsonHandle& other);
+		JsonHandle(std::string data);
+		JsonHandle(const char*);
 		
-		~Json();
+		~JsonHandle();
 
 	public:
 		int getType();

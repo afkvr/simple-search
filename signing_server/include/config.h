@@ -14,12 +14,12 @@
 /*
  * BOSS IP of group peer machine
  */
-#define BOSS_IP "192.168.1.95"
+#define BOSS_IP "192.168.1.70" // <== fake
 
 /*
  * Boss ip of instance in generater Server
  */
-#define GENERATOR_BOSS_IP "192.168.1.95" // <-- fake
+#define GENERATOR_BOSS_IP "192.168.1.70" // <-- fake
 #define GENERATOR_BOSS_PORT "6666"
 
 /*
@@ -49,21 +49,6 @@ struct worker_t {
 	long long id;
 	void* thread_ptr = 0;
 	bool isWorking = false;
-};
-
-// define message type
-static const char* mess_types[] = {
-	// For signing server
-	"GET_PEER_LIST",
-	"SYNC_PEER_LIST",
-	"VOTE_MESSAGE",
-	"CLIENT_SIGNING_MESSAGE",
-	"PEER_SIGNING_MESSAGE",
-	"NOTYFY_CONNECTION",
-	"CACULATE_SIGNATURE_MESSAGE",
-
-	// For generator server
-	"INVERSE_BLIND_MESSAGE"
 };
 
 enum MESS_TYPE {

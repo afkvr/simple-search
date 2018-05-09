@@ -6,20 +6,34 @@
  * setup values for common variables 
  */
 #define WORKER_THREAD_ 5
-#define PORT_	"6666"
+#define PORT_	"6666" 
 
 /* briged for inter process communication */
 #define DEALER_NAME_ "dealer"
 
 /*
  * BOSS IP of group peer machine
+ * will change in future
  */
-#define BOSS_IP "192.168.1.95"
+#define BOSS_IP "192.168.1.70" //<== fake, need chaged if run on other machine because is local ip
+
+
+/*
+ * FILE SERVER ip
+ */
+#define FILE_SERVER_IP "192.168.1.70" // <== fake, need chaged if run on other machine because is local ip
+
+/*
+ * FILE SERVER port
+ */
+#define FILE_SERVER_PORT "7777" // <== fake
+
 
 /*
  * Boss ip of instance in signing Server
+ * will change in future
  */
-#define SIGNING_BOSS_IP "192.168.1.95" // <-- fake
+#define SIGNING_BOSS_IP "192.168.1.70" // <== fake, need chaged if run on other machine because is local ip
 
 /*
  * Key for auth friend server
@@ -49,25 +63,6 @@ struct worker_t {
 	long long id;
 	void* thread_ptr = 0;
 	bool isWorking = false;
-};
-
-
-static const char* mess_types[] = {
-	// for P2P comunication
-	"GET_PEER_LIST",
-	"SYNC_PEER_LIST",
-	
-	// for comunication with client device
-	"CLIENT_BLIND_NUMBER_REQUEST",
-	"CLIENT_BLIND_NUMBER_RESPONSE",
-	
-	// for comunication with other nodes
-	"PEER_BLIND_NUMBER_REQUEST",
-	"PEER_BLIND_NUMBER_RESPONSE",
-	
-	// for comunication with client device
-	"BLIND_MESSAGE",
-	"INVERSE_BLIND_MESSAGE"
 };
 
 enum MESS_TYPE {

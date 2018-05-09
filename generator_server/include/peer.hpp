@@ -13,6 +13,10 @@
 #include "jsonhandle.hpp"
 #include "numberhandle.hpp"
 
+extern "C" {
+#include "sodium.h"
+}
+
 namespace bitmile {
 class Peer {
 	public:
@@ -27,8 +31,8 @@ class Peer {
 		/*
 		 * Because we use P2P comunication, so we need keep all node ip  in network
 		 */
-		void syncPeerListRequest (zmq::context_t*, bitmile::Json&);
-		void syncPeerListResponse (zmq::socket_t*, bitmile::Json&);
+		void syncPeerListRequest (zmq::context_t*, bitmile::JsonHandle&);
+		void syncPeerListResponse (zmq::socket_t*, bitmile::JsonHandle&);
 		
 		/* 
 		 * For new instance join to network
@@ -36,30 +40,37 @@ class Peer {
 		 * network will keep ip to common list then notify to all node in network
 		 */
 		void notifyConnection (zmq::context_t*);
-		void getPeerListResponse(zmq::socket_t*, bitmile::Json&);
+		void getPeerListResponse(zmq::socket_t*, bitmile::JsonHandle&);
 
 		// broadcast message
-		void broadcastMessage(bitmile::Json&);
+		void broadcastMessage(bitmile::JsonHandle&);
 
 		/*
 		 * Generate and return blind number to client
 		 */
-		void clientBlindNumberRequest(zmq::socket_t*, bitmile::Json&);
+		void clientBlindNumberRequest(zmq::socket_t*, bitmile::JsonHandle&);
 
 		/*
 		 * Generate and return blind number to client
 		 */
-		void peerBlindNumberRequest(zmq::socket_t*, bitmile::Json&);
+		void peerBlindNumberRequest(zmq::socket_t*, bitmile::JsonHandle&);
 
 		/*
 		 * Generate blind message from random blind number
 		 */
-		void blindMessage(zmq::socket_t*,bitmile::Json&);
+		void blindMessage(zmq::socket_t*,bitmile::JsonHandle&);
 
 		/*
 		 * Inverse blind message from Inverse pair with blind number
 		 */
-		void inverseMessage(zmq::socket_t*,bitmile::Json&);
+		void inverseMessage(zmq::socket_t*,bitmile::JsonHandle&);
+
+		void setupSecureConnection(); // clone from enterprise
+
+		/*
+  		 * save to file server 
+		 */
+		void uploadDoc(bitmile::JsonHandle& mess);
 
 		static void handleMessage(Peer*, worker_t*, zmq::context_t*);
 		static std::string concatTcpIp(const char* ip, const char* port);
@@ -83,6 +94,13 @@ class Peer {
 		std::mutex mutex;
 
 		bitmile::NumberHandle numberHandle;
+
+		std::atomic<bool> is_Proxy;
+
+		//encryption atribute
+	    std::vector<char> sec_key_;
+	    std::vector<char> nonce_;
+	    std::vector<char> host_public_key_;
 };
 }
 
