@@ -65,7 +65,7 @@ class Peer {
 		 */
 		void inverseMessage(zmq::socket_t*,bitmile::JsonHandle&);
 
-		void setupSecureConnection(); // clone from enterprise
+		void setupSecureConnection(zmq::socket_t&); // clone from enterprise
 
 		/*
   		 * save to file server 
@@ -75,6 +75,10 @@ class Peer {
 		static void handleMessage(Peer*, worker_t*, zmq::context_t*);
 		static std::string concatTcpIp(const char* ip, const char* port);
 		static void ssend (zmq::socket_t*, std::string&);
+		
+		//  Sends string as 0MQ string, as multipart non-terminal
+		static bool s_sendmore (zmq::socket_t & socket, const std::string & string);
+		
 	private:
 		//std::queue<long long> thread_ids;
 		std::queue<worker_t*> worker_list;

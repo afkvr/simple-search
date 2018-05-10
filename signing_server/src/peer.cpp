@@ -369,7 +369,7 @@ void Peer::caculateSignatureMessageRequest(zmq::socket_t* socket_ptr, bitmile::J
 
 	// if num of partial signature data from other node in network not equal size with size of peer list
 	// dont continous process
-	if (i->second.size() < (peer_ips.size()-1)) // decreate one for ip of itself
+	if (i->second.size() < peer_ips.size()) 
 		return;
 
 	// caculate signature message and send to generator_server
@@ -396,11 +396,12 @@ void Peer::caculateSignatureMessageRequest(zmq::socket_t* socket_ptr, bitmile::J
 		// create empty blind_server_ips for
 		bitmile::JsonHandle blind_server_ips = {};
 		inverse_mess_req["blind_server_ips"] = blind_server_ips;
+		
+		{
+			// caculate signing message at here 
+		}
 
-		// TODO SOMETHING
-		
-		// send to generator server group
-		
+		// send to generator server group		
 		std::string mess_dump = inverse_mess_req.dump();
 		zmq::context_t context(1);
 		zmq::socket_t socket(context, ZMQ_REQ);
@@ -413,6 +414,7 @@ void Peer::caculateSignatureMessageRequest(zmq::socket_t* socket_ptr, bitmile::J
 		ssend(&socket, mess_dump); // <== fake
 
 		std::cout << "signature_data_session list size before " << signature_data_session.size() << std::endl;
+
 		// clear session
 		signature_data_session.erase(identify);
 
@@ -670,27 +672,26 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::JsonHandle& mess) {
 	std::string identify = mess["identify"];
 	std::string from_ip = mess["from_ip"];
 
-	// dont continuous process if from_ip is boss ip
-	if (bitmile::quickCompareStr(from_ip.c_str(), BOSS_IP))
-		return;
-
-	std::cout << "Peer::voteRequest not is proxy  " << std::endl;
-
-	std::string vote_string = mess["vote"];
-	long long vote_num = std::stoll(vote_string);
-
-	std::cout << "Peer::voteRequest vote num  " << vote_num << std::endl;
-
-	// add vote number to map
-	std::pair<std::string, long long> ip_vote(from_ip, vote_num);
+	// get entry point of challenge number list
 	std::map<std::string, std::map<std::string, long long>>::iterator i = challenge_numbers.find(identify);
-	if (i == challenge_numbers.end()){
-		std::pair<std::string, std::map<std::string, long long>> pair_challenge(identify, std::map<std::string, long long>());
-		pair_challenge.second.insert(ip_vote);
-		challenge_numbers.insert(pair_challenge);
-	}
-	else {
-		i->second.insert(ip_vote);
+
+	// dont assign vote number  if from_ip is boss ip
+	if (!bitmile::quickCompareStr(from_ip.c_str(), BOSS_IP)) {
+		std::cout << "Peer::voteRequest not is proxy  " << std::endl;
+		std::string vote_string = mess["vote"];
+		long long vote_num = std::stoll(vote_string);
+		std::cout << "Peer::voteRequest vote num  " << vote_num << std::endl;
+
+		// add vote number to map
+		std::pair<std::string, long long> ip_vote(from_ip, vote_num);
+		if (i == challenge_numbers.end()){
+			std::pair<std::string, std::map<std::string, long long>> pair_challenge(identify, std::map<std::string, long long>());
+			pair_challenge.second.insert(ip_vote);
+			challenge_numbers.insert(pair_challenge);
+		}
+		else {
+			i->second.insert(ip_vote);
+		}
 	}
 
 	// refind again, if still dont exists in session list , return
@@ -699,6 +700,7 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::JsonHandle& mess) {
 	}
 
 	std::cout << "Peer::voteRequest vote list size " << i->second.size() << std::endl;
+
 	//dont process if list size of  challenge  number less than num of peer ips in network
 	if (i->second.size() != peer_ips.size())
 		return;
@@ -715,11 +717,7 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::JsonHandle& mess) {
 	std::cout << "Peer::voteRequest winner " << winner->first << " with value " << winner->second << std::endl;
 
 	// if winner is itself , dont continous process
-	if (bitmile::quickCompareStr(ip.c_str(),winner->first.c_str())) {
-		challenge_numbers.erase(identify);
-		signing_session.erase(identify);
-		return;
-	}
+	bool is_winner = bitmile::quickCompareStr(ip.c_str(),winner->first.c_str());
 
 	// send signature data to win node (have biggest number)
 	/*
@@ -734,17 +732,9 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::JsonHandle& mess) {
 	* }
 	*/
 	std::map<std::string, std::string>::iterator partial_signature_data = signing_session.find(identify);
-	if (partial_signature_data == signing_session.end()) 
-		goto clear_session;
- 	
+	if (partial_signature_data != signing_session.end()) 
  	{
-		zmq::context_t context(1);
-		zmq::socket_t socket(context, ZMQ_REQ);
-		std::cout << "caculate signature data " << bitmile::Peer::concatTcpIp(winner->first.c_str(),PORT_) << std::endl;
-
-		socket.connect(bitmile::Peer::concatTcpIp(winner->first.c_str(),PORT_).c_str());
-
-		bitmile::JsonHandle signature_data;
+ 		bitmile::JsonHandle signature_data;
 		signature_data["type"] = std::to_string(CACULATE_SIGNATURE_MESSAGE);
 		signature_data["identify"] = identify;
 		signature_data["from_ip"] = ip;
@@ -752,13 +742,21 @@ void Peer::voteRequest(zmq::socket_t* socket_ptr,bitmile::JsonHandle& mess) {
 		signature_data["data"] =  partial_signature_data->second;
 		signature_data["callback_ip"] = mess["callback_ip"];
 
-		std::string dump_mess = signature_data.dump();
-		ssend(&socket, dump_mess);
-
-		socket.close();
+ 		if (!is_winner) {
+			zmq::context_t context(1);
+			zmq::socket_t socket(context, ZMQ_REQ);
+			std::cout << "caculate signature data " << bitmile::Peer::concatTcpIp(winner->first.c_str(),PORT_) << std::endl;
+			socket.connect(bitmile::Peer::concatTcpIp(winner->first.c_str(),PORT_).c_str());
+			std::string dump_mess = signature_data.dump();
+			ssend(&socket, dump_mess);
+			socket.close();
+		}
+		// send signature mesage back to itself if this is winner
+		else {
+			caculateSignatureMessageRequest(socket_ptr, signature_data);
+		} 
 	}
 
-clear_session:
 	challenge_numbers.erase(identify);
 	signing_session.erase(identify);
 }

@@ -166,7 +166,7 @@ namespace bitmile {
 
     //TODO: change port to dynamic
     //start accepting connection from clients
-    clients_socket_->bind ("tcp://*:5555");
+    clients_socket_->bind ("tcp://*:7777");
 
     //init connection for worker threads
     workers_socket_->bind ("inproc://workers");

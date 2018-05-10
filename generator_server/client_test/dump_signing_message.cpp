@@ -50,9 +50,9 @@ int main ()
     nlohmann::json upload_data;
     upload_data["owner_address"] = "ether address";
     upload_data["doc_id"] = "1";
-    upload_data["elastic_doc_id"] = "1";
-    upload_data["data"] = "hello";
-    upload_data["data_size"] = 6;
+    upload_data["elastic_doc_id"] = "2";
+    upload_data["data"] = "aGVsbG8=";
+    upload_data["data_size"] = 5;
 
     std::vector<std::string> keys = { "c" , "d"};
     upload_data["keywords"] = keys;

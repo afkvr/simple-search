@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include "json.hpp"
 
 /*
  * Just use on linux environment
@@ -37,20 +38,15 @@ int main ()
     zmq::socket_t socket (context, ZMQ_REQ);
 
     std::cout << "Connecting to hello world server…" << std::endl;
-    socket.connect ("tcp://192.168.1.95:5555"); // <== boss ip
+    socket.connect ("tcp://192.168.1.70:6666"); // <== boss ip
 
-    //  Do 10 requests, waiting each time for a response
-    //for (int request_nbr = 0; request_nbr != 100; request_nbr++) {
-        //zmq::message_t request (10);
+    // <<=== fake upload data, need change in future
+	std::string data("{\"identify\":\"thangnt123\",\"type\":\"2\",\"auth_key\":\"auth_client\"}");	
 
-	std::string data ("{\"identify\":\"thangnt123\",\"type\":\"CLIENT_SIGNING_MESSAGE\",\"auth_key\":\"auth_client\",\"callback_ip\":\"tcp://192.168.1.95:5555\",\"data\":\"this is some data\"}");	
-	//data << request_nbr;
-	//sprintf(data, request_nbr);
-	std::cout << "message content: " << data << std::endl;	
 	zmq::message_t request(data.size()+1);
-        memcpy (request.data(), data.c_str(), data.size());
-//        std::cout << "data " << request_nbr  << std::endl;
-        socket.send (request);
+    memcpy (request.data(), data.c_str(), data.size());
+
+    socket.send (request);
 
 	char* char_ptr = (char*)request.data();
 	char_ptr[data.size()] = '\0';

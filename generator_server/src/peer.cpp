@@ -241,7 +241,6 @@ void Peer::handleMessage(Peer* peer, worker_t* worker, zmq::context_t* context_p
 	// if first run, sync peer list of other nodes in network
 	if (!peer->setupFirst.load(std::memory_order_acquire)) {
 		std::lock_guard<std::mutex> lock(peer->mutex);
-		peer->setupSecureConnection();
 
 		// ignore if boss ip is itself
 		if (bitmile::quickCompareStr(peer->ip.c_str(), BOSS_IP)) {
@@ -299,6 +298,9 @@ run:
 			// request inverse blind message
 			else if (mess_type == INVERSE_BLIND_MESSAGE) {
 				peer->inverseMessage(&rep_socket, mess);
+			}
+			else if (mess_type == UPLOAD_DOC_REQUEST) {
+				peer->uploadDoc(mess);
 			}
 		} catch (std::exception& e) {
 			std::cout << e.what() << std::endl;		
@@ -382,6 +384,15 @@ void Peer::ssend (zmq::socket_t* socket_ptr, std::string& data) {
 	char_ptr[data.size()] = END_OF_STRING;
 
 	(*socket_ptr).send(mess);
+}
+
+bool Peer::s_sendmore (zmq::socket_t & socket, const std::string & string) {
+  zmq::message_t message(string.size());
+  memcpy (message.data(), string.data(), string.size());
+
+  bool rc = socket.send (message, ZMQ_SNDMORE);
+  return (rc);
+
 }
 
 std::string Peer::concatTcpIp(const char* ip, const char* port) {
@@ -642,9 +653,27 @@ send:
 	// for now, logic was save message to file_server
 	if (array_ips.size() == peer_ips.size()) {
 		// <<=== fake upload data, need change in future
-		std::cout << "send data to file_server start " << std::endl;
-		bitmile::JsonHandle json_request(mess["data"]);
-		uploadDoc(json_request);
+		std::cout << "send encrypt data to proxy for uploade to file_server  " << std::endl;
+		zmq::context_t context(1);
+		zmq::socket_t socket(context, ZMQ_REQ);
+		socket.connect(bitmile::Peer::concatTcpIp(BOSS_IP, PORT_));
+
+		/*
+		* message format for recv
+		* {
+		*  	"type": UPLOAD_DOC_REQUEST 
+		*	"auth_key": string 	<== use for check is trust client
+		*	"data": string 	<== data for upload to file server
+		* }
+		*/
+		bitmile::JsonHandle mess_request;
+		mess_request["type"] = std::to_string(UPLOAD_DOC_REQUEST);
+		mess_request["auth_key"] = AUTH_KEY;
+		mess_request["data"] = mess["data"]; // fake, need change in future, after add logic for interact with mess data
+
+		std::string dump_mess = mess_request.dump();
+		ssend(&socket, dump_mess);
+		socket.close();
 	}
 
 	// if no, send invert message to next node in network
@@ -700,7 +729,7 @@ send:
  * read public key of server and setup secure connection
  * tranfer secure data
  */
-void Peer::setupSecureConnection() {
+void Peer::setupSecureConnection(zmq::socket_t& socket) {
 	//read server public key here
     std::ifstream fin ("server_public_key.key", std::ios::binary | std::ios::ate);
     assert (fin.is_open());
@@ -755,98 +784,141 @@ void Peer::setupSecureConnection() {
 
     memcpy (mes_data.data() + offset, ciphertext.data(), ciphertext_len);
 
-   	zmq::context_t context(1);
-   	zmq::socket_t socket(context, ZMQ_REQ);
-
-   	socket.connect(bitmile::Peer::concatTcpIp(FILE_SERVER_IP, FILE_SERVER_PORT));
-
 	{
-	   	std::string dump_mess(mes_data.data());
-	   	ssend(&socket, dump_mess);
+		// send message
+	   	zmq::message_t setupKey_request(mes_data.size());
+	   	memcpy(setupKey_request.data(), mes_data.data(), mes_data.size());
+	   	socket.send(setupKey_request);
 	}
-
-	socket.close();
 }
 
-void Peer::uploadDoc(bitmile::JsonHandle& mess) {
-	zmq::context_t context(1);
-	zmq::socket_t client_socket(context, ZMQ_REQ);
+void Peer::uploadDoc(bitmile::JsonHandle& peer_mess) {
 
-	// clone code from enterprise app write by thinh
-	// fake, because process logic for inverse message not successed
-	bitmile::msg::UploadDocMes uploadDoc(bitmile::msg::UPLOAD_DOC, mess.dump().c_str(),  mess.dump().size());
-	std::vector<char> uploadDocData;
-	uploadDoc.Serialize(uploadDocData);
-	client_socket.connect(bitmile::Peer::concatTcpIp(FILE_SERVER_IP, FILE_SERVER_PORT).c_str());
+   	zmq::context_t context(1);
+   	zmq::socket_t client_socket(context, ZMQ_REQ);
+   	client_socket.setsockopt(ZMQ_SNDTIMEO, 1000);
+   	client_socket.connect(bitmile::Peer::concatTcpIp(FILE_SERVER_IP, FILE_SERVER_PORT));
 
-	std::cout << "Peer::uploadDoc setting successed " << std::endl; 
+	// setting secure connection
+	{
+		setupSecureConnection (client_socket);
 
-    //encrypt data
-    unsigned long long ciphertext_len = uploadDocData.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES;
-    std::vector<unsigned char> ciphertext;
-    ciphertext.resize(ciphertext_len);
-    std::cout << "key: " << bitmile::convertToBase64(reinterpret_cast<unsigned char* > (sec_key_.data()), sec_key_.size()) << std::endl;
-    std::cout << "nonce: " << bitmile::convertToBase64(reinterpret_cast <unsigned char* > (nonce_.data()), nonce_.size()) << std::endl;
-    
-    crypto_aead_xchacha20poly1305_ietf_encrypt(ciphertext.data(), &ciphertext_len,
-                                               reinterpret_cast<unsigned char*> (uploadDocData.data()),
-                                               uploadDocData.size(),
-                                               NULL, 0,
-                                               NULL,
-                                               reinterpret_cast<unsigned char*> (nonce_.data()),
-                                               reinterpret_cast<unsigned char*> (sec_key_.data()));
+		// for response
+	   	zmq::message_t response;
+	   	client_socket.recv(&response);
+	}
 
-    std::cout << "Peer::uploadDoc setting crypto_aead_xchacha20poly1305_ietf_encrypt successed " << std::endl; 
+	{
 
-    //create request message
-    std::vector <char> mess_data;
-    mess_data.resize(sizeof (bitmile::msg::MessageType) + ciphertext_len);
-    bitmile::msg::MessageType type = bitmile::msg::MessageType::UPLOAD_DOC;
-    memcpy (mess_data.data(), &type, sizeof (bitmile::msg::MessageType));
-    int offset = sizeof (bitmile::msg::MessageType);
-    memcpy(mess_data.data() + offset, ciphertext.data(), ciphertext_len);
+		std::cout << "Peer::uploadDoc " << std::endl;
+		/*
+		* message format for recv
+		* {
+		*  	"type": UPLOAD_DOC_REQUEST 
+		*	"auth_key": string 	<== use for check is trust client
+		*	"data": string 	<== data for upload to file server
+		* }
+		*/
+		std::string auth_key_str = peer_mess["auth_key"];
+		if (!bitmile::quickCompareStr(auth_key_str.c_str(), AUTH_KEY)) // <== not trust, dont continuous process
+			return;
 
-    //send message to server
-    std::string dump_mess(mess_data.data());
-    ssend(&client_socket, dump_mess);
+		//zmq::context_t context(1);
+		//zmq::socket_t client_socket(context, ZMQ_REQ);
+		//client_socket.setsockopt(ZMQ_SNDTIMEO, 1000);
 
-    // recv response message from server
-    zmq::message_t reply;
-    client_socket.recv(&reply);
+		bitmile::JsonHandle mess(peer_mess["data"]);
+		std::cout << "Peer::uploadDoc  mess data " << mess.dump() << std::endl;
 
-    //parse reply
-    if (reply.size() < sizeof (bitmile::msg::MessageType)) {
-    	std::cout << "parse reply false, because size of reply_data less than size of MessageType" << std::endl;
-        return;
-    }
+		// clone code from enterprise app write by thinh
+		// fake, because process logic for inverse message not successed
+		bitmile::msg::UploadDocMes uploadDoc(bitmile::msg::MessageType::UPLOAD_DOC, mess.dump().c_str(),  mess.dump().size());
 
-    std::vector<char> reply_data;
-    reply_data.resize(reply.size());
+    	std::cout  <<  "MessageHandler::HandleUploadDoc ownerAddress " <<  uploadDoc.GetDoc().GetOwnerAddress() << std::endl;
+   	 	std::cout  <<  "MessageHandler::HandleUploadDoc GetOwnerDocId " <<  uploadDoc.GetDoc().GetOwnerDocId() << std::endl;
+   	 	std::cout << "MessageHandler::HandleUploadDoc get Doc data " << uploadDoc.GetDoc().ToJson().dump() << std::endl;
 
-	memcpy(reply_data.data(), reply.data(), reply.size());
+		if (mess.find ("data") != mess.end()) {
+	        if (mess.count ("data_size") != 1 || mess.count("keywords") != 1) {
+	        	std::cout << "not found " << std::endl;
+	        }
 
-   	type = bitmile::msg::MessageType::BLANK;
-    memcpy(&type, reply_data.data(), sizeof (bitmile::msg::MessageType));
+	        std::cout << "found " << std::endl; 
+	    }
 
-    std::cout << "Reply Type " << type << std::endl;
-    offset = sizeof (bitmile::msg::MessageType);
+		std::vector<char> uploadDocData;
+		uploadDoc.Serialize(uploadDocData);
+		
+		client_socket.connect(bitmile::Peer::concatTcpIp(FILE_SERVER_IP, FILE_SERVER_PORT).c_str());
 
-    //decrypt reply
-    unsigned long long decrypted_len = 0;
-    std::vector<char> raw_reply;
-    raw_reply.resize (reply_data.size());
+	    //encrypt data
+	    unsigned long long ciphertext_len = uploadDocData.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES;
+	    std::vector<unsigned char> ciphertext;
+	    ciphertext.resize(ciphertext_len);
+	    std::cout << "key: " << bitmile::convertToBase64(reinterpret_cast<unsigned char* > (sec_key_.data()), sec_key_.size()) << std::endl;
+	    std::cout << "nonce: " << bitmile::convertToBase64(reinterpret_cast <unsigned char* > (nonce_.data()), nonce_.size()) << std::endl;
+	    
+	    crypto_aead_xchacha20poly1305_ietf_encrypt(ciphertext.data(), &ciphertext_len,
+	                                               reinterpret_cast<unsigned char*> (uploadDocData.data()),
+	                                               uploadDocData.size(),
+	                                               NULL, 0,
+	                                               NULL,
+	                                               reinterpret_cast<unsigned char*> (nonce_.data()),
+	                                               reinterpret_cast<unsigned char*> (sec_key_.data()));
 
-    if (crypto_aead_xchacha20poly1305_ietf_decrypt(reinterpret_cast<unsigned char*> (raw_reply.data()),
-                                                   &decrypted_len,
-                                                   NULL,
-                                                   reinterpret_cast<unsigned char*>(reply_data.data() + offset),
-                                                   reply_data.size() - offset,
-                                                   NULL,
-                                                   0,
-                                                   reinterpret_cast<unsigned char*>(nonce_.data()),
-                                                   reinterpret_cast<unsigned char*>(sec_key_.data())) == 0) {
-    	raw_reply.resize (decrypted_len);
- 	}
+	    std::cout << "Peer::uploadDoc setting crypto_aead_xchacha20poly1305_ietf_encrypt successed " << std::endl; 
+
+	    //create request message
+	    std::vector <char> mess_data;
+	    mess_data.resize(sizeof (bitmile::msg::MessageType) + ciphertext_len);
+	    bitmile::msg::MessageType type = bitmile::msg::MessageType::UPLOAD_DOC;
+	    memcpy (mess_data.data(), &type, sizeof (bitmile::msg::MessageType));
+	    int offset = sizeof (bitmile::msg::MessageType);
+	    memcpy(mess_data.data() + offset, ciphertext.data(), ciphertext_len);
+
+	    //send message to server
+	    zmq::message_t uploadDoc_request(mess_data.size());
+		memcpy(uploadDoc_request.data(), mess_data.data(), mess_data.size());
+		client_socket.send(uploadDoc_request);
+
+	    // recv response message from server
+	    zmq::message_t reply;
+	    client_socket.recv(&reply);
+
+	    //parse reply
+	    if (reply.size() < sizeof (bitmile::msg::MessageType)) {
+	    	std::cout << "parse reply false, because size of reply_data less than size of MessageType" << std::endl;
+	        return;
+	    }
+
+	    std::vector<char> reply_data;
+	    reply_data.resize(reply.size());
+
+		memcpy(reply_data.data(), reply.data(), reply.size());
+
+	   	type = bitmile::msg::MessageType::BLANK;
+	    memcpy(&type, reply_data.data(), sizeof (bitmile::msg::MessageType));
+
+	    std::cout << "Reply Type " << type << std::endl;
+	    offset = sizeof (bitmile::msg::MessageType);
+
+	    //decrypt reply
+	    unsigned long long decrypted_len = 0;
+	    std::vector<char> raw_reply;
+	    raw_reply.resize (reply_data.size());
+
+	    if (crypto_aead_xchacha20poly1305_ietf_decrypt(reinterpret_cast<unsigned char*> (raw_reply.data()),
+	                                                   &decrypted_len,
+	                                                   NULL,
+	                                                   reinterpret_cast<unsigned char*>(reply_data.data() + offset),
+	                                                   reply_data.size() - offset,
+	                                                   NULL,
+	                                                   0,
+	                                                   reinterpret_cast<unsigned char*>(nonce_.data()),
+	                                                   reinterpret_cast<unsigned char*>(sec_key_.data())) == 0) {
+	    	raw_reply.resize (decrypted_len);
+	 	}
+	 }
 
     client_socket.close();
 }
