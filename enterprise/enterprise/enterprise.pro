@@ -39,7 +39,9 @@ SOURCES += \
     ../../blockchain/blockchain_interface.cpp \
     internaldb.cpp \
     dealmanager.cpp \
-    accountmanager.cpp
+    accountmanager.cpp \
+    blockchainWorkerThread.cpp \
+    config.cpp
 
 
 HEADERS += \
@@ -52,12 +54,13 @@ HEADERS += \
     ../../vendors/cpp-elasticsearch/src/http/http.h \
     ../../vendors/cpp-elasticsearch/src/json/json.h \
     zmq_manager.h \
-    utils.h \
     ../../utils/utils.h \
     ../../blockchain/blockchain_interface.h \
     internaldb.h \
     dealmanager.h \
-    accountmanager.h
+    accountmanager.h \
+    blockchainWorkerThread.h \
+    config.h
 
 
 RESOURCES += \
@@ -150,6 +153,20 @@ else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/..
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/debug/ssl.lib
 else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/libssl.a
 
+
 DISTFILES +=
 
 unix|win32: LIBS += -lboost_filesystem
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/cryptopp700/release/ -lcryptopp
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/cryptopp700/debug/ -lcryptopp
+else:unix: LIBS += -L$$PWD/../../vendors/cryptopp700/ -lcryptopp
+
+INCLUDEPATH += $$PWD/../../vendors/cryptopp700/include
+DEPENDPATH += $$PWD/../../vendors/cryptopp700/include
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/release/libcryptopp.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/debug/libcryptopp.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/release/cryptopp.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/debug/cryptopp.lib
+else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/libcryptopp.a

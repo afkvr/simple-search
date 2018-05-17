@@ -8,6 +8,18 @@
 
 MainWindow::MainWindow(QObject *parent) : QObject(parent)
 {
+    //get current database info
+
+    blockchain_event_ = new BlockchainWorkerThread();
+
+    // for answer event
+    connect (blockchain_event_, SIGNAL (newAnswers),
+             this, SLOT (updateDealAnswers));
+    connect (blockchain_event_, SIGNAL (newKeys),
+             this, SLOT (updateDealKey));
+
+    blockchain_event_->start();
+
     account_manager_ = AccountManager::getInstance();
 
     //connect slots
@@ -101,12 +113,13 @@ void MainWindow::on_search_done() {
 bool MainWindow::on_new_createDealButton_clicked()
 {
     bool check = true;
-    check &= account_manager_->createDeal(m_blockchainAddr.toStdString(), m_passphase.toStdString());
+    int global_id = 177; //fake
+    check &= account_manager_->createDeal(m_blockchainAddr.toStdString(), m_passphase.toStdString(), m_dealPrice, m_expiredTime, global_id);
 
     if (!check)
         return false;
 
-    check &= insertToInternalDB();
+    check &= insertToInternalDB(global_id);
     return check;
 }
 
@@ -160,6 +173,15 @@ void MainWindow::setDealPrice(qreal dealPrice) {
     Q_EMIT dealPriceChanged(m_dealPrice);
 }
 
+QDateTime MainWindow::dealExpiredTime() const {
+    return m_expiredTime;
+}
+
+void MainWindow::setExpiredTime(QDateTime time) {
+    m_expiredTime = time;
+    Q_EMIT (m_expiredTime);
+}
+
 QString MainWindow::blockchainAddr() const {
     return m_blockchainAddr;
 }
@@ -194,7 +216,7 @@ void MainWindow::setKeywords(QVariantList keywords) {
     Q_EMIT keywordsChanged(m_keywords);
 }
 
-bool MainWindow::insertToInternalDB() {
+bool MainWindow::insertToInternalDB(int global_id) {
     std::vector<bitmile::db::Document> searched_doc = account_manager_->getSearchedDoc();
 
     // if searched doc is empty , not continue process
@@ -204,6 +226,7 @@ bool MainWindow::insertToInternalDB() {
     // insert deal data to db
     InternalDB::Deal deal;
 
+    deal.global_id = global_id;
     deal.price = m_dealPrice;
     deal.private_key = account_manager_->getSecretKey();
     deal.public_key =  account_manager_->getPublicKey();
@@ -249,3 +272,75 @@ bool MainWindow::insertToInternalDB() {
     return true;
 }
 
+void MainWindow::updateDealAnswers (std::vector<int64_t> deal_ids, std::vector<int> answer_numbs) {
+    if (deal_ids.size() != answer_numbs.size()) {
+        qDebug() << "deal_ids size != answer_numbs size, something went wrong";
+        return;
+    }
+
+    for (int i = 0; i < deal_ids.size(); i++) {
+        qDebug() << deal_ids[i] << " " << answer_numbs[i];
+        //get answer from blockchain
+        for (int i = 0; i < answer_numbs[i]; i++) {
+            std::string get_answer_q = bitmile::blockchain::DealContract::GetAnswer(deal_ids[i], i);
+            nlohmann::json ans_json;
+            if (blockchain_.SendCall("", Config::getInstance()->getDealContractAddress(), get_answer_q, "1", ans_json)) {
+                nlohmann::json ans = bitmile::blockchain::DealContract::ParseGetAnswer(ans_json);
+
+                InternalDB* db = InternalDB::getInstance();
+                InternalDB::Deal deal = db->getDeal(deal_ids[i]);
+
+                InternalDB::DealOwner dealOwner;// = db->getDealOwner(deal.time, ans["user_address"]);
+
+                if (dealOwner.status == DEALOWNER_STATUS_WAITING){
+                    if (ans["answer"] == "YES") {
+                        dealOwner.status = DEALOWNER_STATUS_ACCEPT;
+                    }else if (ans["answer"] == "NO"){
+                        dealOwner.status = DEALOWNER_STATUS_DONTACCEPT;
+                    }
+
+                    //TODO: get file from fileserver
+
+                    db->updateDealOwnerData(dealOwner);
+                }
+            }
+        }
+    }
+
+    DealManager::getInstance()->updateDealData();
+    DealManager::getInstance()->updateDealOwnerData();
+}
+void MainWindow::updateDealKey (std::vector<int64_t> deal_ids, std::vector<int> key_numbs){
+    if (deal_ids.size() != key_numbs.size()) {
+        qDebug() << "deal ids size != key numb size";
+        return;
+    }
+    for (int i = 0; i < deal_ids.size(); i++) {
+        qDebug() << deal_ids[i] << " " << key_numbs[i];
+        //get answer from blockchain
+        for (int i = 0; i < key_numbs[i]; i++) {
+            std::string get_key_q = bitmile::blockchain::DealContract::GetKey(deal_ids[i], i);
+            nlohmann::json key_json;
+            if (blockchain_.SendCall("", Config::getInstance()->getDealContractAddress(), get_key_q, "1", key_json)) {
+                nlohmann::json key = bitmile::blockchain::DealContract::ParseGetAnswer(key_json);
+
+                InternalDB* db = InternalDB::getInstance();
+                InternalDB::Deal deal = db->getDeal(deal_ids[i]);
+
+                InternalDB::DealOwner dealOwner;// = db->getDealOwner(deal.time, key["user_address"]);
+
+                if (dealOwner.owner_secret_key == ""){
+                    std::string extracted_key = key["key"];
+                    dealOwner.owner_secret_key = QString(extracted_key.c_str());
+                    std::string extracted_nonce = key["nonce"];
+                    dealOwner.nonce = QString (extracted_nonce.c_str());
+                    //TODO: decrypt file from fileserver
+                    db->updateDealOwnerData(dealOwner);
+                }
+            }
+        }
+    }
+
+    DealManager::getInstance()->updateDealData();
+    DealManager::getInstance()->updateDealOwnerData();
+}

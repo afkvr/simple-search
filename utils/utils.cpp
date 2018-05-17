@@ -51,6 +51,7 @@ std::string Utils::convertFromB64ToBin(const char *input, unsigned long long inp
     return result;
 }
 
+
 bool Utils::createFolder (std::string folderPath) {
     //dont continuous process if exists before
     if (Utils::isExists(folderPath)) {
@@ -86,4 +87,66 @@ bool Utils::isExists(std::string path) {
     }
 
     return false;
+}
+
+std::string Utils::convertToHex (const unsigned char* input, size_t input_len) {
+    size_t hex_maxlen = input_len * 2 + 1;
+    char* hex = new char[hex_maxlen];
+    sodium_bin2hex(hex, hex_maxlen, input, input_len);
+    return std::string (hex, hex_maxlen - 1);
+}
+
+std::string Utils::convertToHex(long long x) {
+    std::stringstream stream;
+    stream << std::hex << x;
+    return stream.str();
+}
+
+std::string Utils::zeroLeadPad(std::string input, size_t length) {
+    std::string result;
+    if (input.length() < length) {
+        std::stringstream stream;
+        stream << std::setfill ('0') << std::setw(length) << input;
+        result = stream.str();
+    }else {
+        result = input;
+    }
+    return result;
+}
+
+std::string Utils::zeroTrailPad(std::string input, size_t length) {
+    std::string result;
+    if (length > input.length()) {
+        result = input.append(std::string (length - input.length(), '0'));
+    }else{
+        result = input;
+    }
+    return result;
+}
+
+void Utils::convertFromHex(std::string x, long long & result) {
+    std::stringstream ss;
+    ss << std::hex << x;
+    ss >> result;
+}
+
+void Utils::convertFromHex(std::string hex, std::string & result) {
+
+    size_t bin_max_len = hex.length();
+    char* bin = new char[bin_max_len];
+    size_t bin_len = 0;
+    int code = sodium_hex2bin(reinterpret_cast<unsigned char*> (bin), bin_max_len,
+                           hex.c_str(), hex.length(),
+                           NULL, &bin_len,
+                           NULL);
+    if (code == 0) {
+        result = std::string (bin, bin_len);
+    }
+    delete[] bin;
+
+}
+
+std::string Utils::trimZeroLead(std::string s) {
+    s.erase(0, s.find_first_not_of('0'));
+    return s;
 }

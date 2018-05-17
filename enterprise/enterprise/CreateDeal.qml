@@ -259,7 +259,7 @@ AbstractScreen {
                     width: parent.itemWidth
                     height: parent.itemHeight
                     anchors.horizontalCenter: parent.horizontalCenter
-                    placeholderText: "Blockchain Address"
+                    placeholderText: "Wallet Address"
                     font.pixelSize: parent.pixelSizeCommon
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
@@ -299,6 +299,11 @@ AbstractScreen {
                         account.dealPrice = parseInt(price.text);
                         account.blockchainAddr = blockChainAddress.text;
                         account.passphase = passphase.text;
+
+                        var date = new Date(Date.now());
+                        date.setDate (date.getDate() + 90);
+
+                        account.dealExpiredTime = date;
                         account.on_new_createDealButton_clicked();
                     }
                 }

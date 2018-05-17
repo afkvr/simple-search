@@ -7,7 +7,9 @@
 #include "accountmanager.h"
 #include <QVector>
 #include <QVariant>
-
+#include <QDateTime>
+#include "blockchainWorkerThread.h"
+#include "blockchain/blockchain_interface.h"
 class MainWindow : public QObject
 {
     Q_OBJECT
@@ -19,6 +21,7 @@ class MainWindow : public QObject
     // deals information
     Q_PROPERTY(QVariantList docIds READ docIds WRITE setDocIds NOTIFY docIdsChanged)
     Q_PROPERTY(qreal dealPrice READ dealPrice WRITE setDealPrice NOTIFY dealPriceChanged)
+    Q_PROPERTY(QDateTime dealExpiredTime READ dealExpiredTime WRITE setExpiredTime NOTIFY dealExpiredTimeChanged)
     Q_PROPERTY(QString blockchainAddr READ blockchainAddr WRITE setBlockchainAddr NOTIFY blockchainAddrChanged)
     Q_PROPERTY(QString passphase READ passphase WRITE setPassphase NOTIFY passphaseChanged)
     Q_PROPERTY(QVariantList keywords READ keywords WRITE setKeywords NOTIFY keywordsChanged)
@@ -31,6 +34,7 @@ public:
     QString passwordTxt() const;
     QVariantList docIds() const;
     qreal dealPrice() const;
+    QDateTime dealExpiredTime() const;
     QString blockchainAddr() const;
     QString passphase() const;
     QVariantList keywords() const;
@@ -40,9 +44,13 @@ public Q_SLOTS:
     void setPassword(QString passwordTxt);
     void setDocIds(QVariantList docIds);
     void setDealPrice(qreal dealPrice);
+    void setExpiredTime(QDateTime time);
     void setBlockchainAddr(QString blockchainAddr);
     void setPassphase (QString passphase);
     void setKeywords(QVariantList keywords);
+
+    void updateDealAnswers (std::vector<int64_t> deal_ids, std::vector<int> answer_numbs);
+    void updateDealKey (std::vector<int64_t> deal_ids, std::vector<int> key_numbs);
 
     //register page slot
     Q_INVOKABLE bool onRegister();
@@ -56,6 +64,7 @@ Q_SIGNALS:
     void passwordChanged(QString passwordTxt);
     void docIdsChanged(QVariantList docIds);
     void dealPriceChanged(qreal dealPrice);
+    void dealExpiredTimeChanged (QDateTime time);
     void blockchainAddrChanged(QString blockchainAddr);
     void passphaseChanged(QString passphase);
     void keywordsChanged(QVariantList keywords);
@@ -73,7 +82,7 @@ public Q_SLOTS:
     Q_INVOKABLE bool on_new_createDealButton_clicked();
 
 private:
-    bool insertToInternalDB();
+    bool insertToInternalDB(int global_id);
 
 private:
     // account
@@ -85,10 +94,14 @@ private:
     qreal m_dealPrice;
     QString m_blockchainAddr;
     QString m_passphase;
+    QDateTime m_expiredTime;
     QVariantList m_keywords;
 
     // interact with blockchain
+    BlockchainWorkerThread* blockchain_event_;
+    bitmile::blockchain::BlockchainInterface blockchain_;
     AccountManager* account_manager_;
+
 };
 
 #endif // MAINWINDOW_H
