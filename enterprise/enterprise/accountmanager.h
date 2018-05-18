@@ -35,6 +35,7 @@ public:
     bool authenticate ();
     bool registerNewUser ();
     void clearCredential ();
+    std::vector<std::string> getAllUserKey();
 
     //new deal function
     void addKeyword (std::string keyword);
@@ -44,6 +45,7 @@ public:
     std::vector<bitmile::db::Document> getSearchedDoc();
     void search ();
 
+    void setSessionPublicKey(std::string& walletID, std::string publickey);
     void onNewDealReply(const std::string& mes, sio::message::ptr const& data);
 
     bool createDeal(std::string blockchain_addr, std::string blockchain_pass, long long prize, QDateTime expireTime, int& global_id);

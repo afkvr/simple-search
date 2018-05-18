@@ -81,7 +81,8 @@ namespace bitmile {
 
     struct OwnerKeyContract {
         enum Functions{
-            GET_PUB_KEY
+            GET_PUB_KEY,
+            GET_ALL_USER_KEY
         };
 
         typedef std::map<Functions, std::string> FunctionDefinition;
@@ -91,7 +92,10 @@ namespace bitmile {
         static std::string GetFunctionHash (Functions def);
         static std::string GetFunctionABI (Functions def);
         static std::string GetPubKey (std::string address);
+        static std::string GetAllUserId();
+
         static nlohmann::json ParseGetPubKeyResult (nlohmann::json& in);
+        static nlohmann::json ParseGetAllUserId(nlohmann::json& in);
     };
 
   }//namespace blockchain

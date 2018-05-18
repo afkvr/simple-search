@@ -1,4 +1,8 @@
 #include "accountmanager.h"
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+
+#define SOCKETIO_SERVER "https://192.168.1.167:3000"
 
 AccountManager* AccountManager::getInstance() {
     static AccountManager* instance = NULL;
@@ -21,8 +25,10 @@ AccountManager::AccountManager(QObject* parent): QObject(parent)
     public_key_ = NULL;
     public_key_len_ = 0;
 
+    // connect to file server
+    // change if ip and port number is wrong
     socket_manager = new ZmqManager("localhost", "7777");
-    proxy_socket_.connect("https://192.168.1.167:3000");
+    proxy_socket_.connect(SOCKETIO_SERVER);
 
     proxy_socket_.socket()->on("newDeal", std::bind( &AccountManager::onNewDealReply, this, std::placeholders::_1, std::placeholders::_2));
 }
@@ -66,6 +72,19 @@ bool AccountManager::authenticate() {
     return true;
 }
 
+void AccountManager::setSessionPublicKey(std::string& walletID, std::string publickey) {
+    // try to connect to socket io server
+    while(!proxy_socket_.opened()) {
+        proxy_socket_.connect(SOCKETIO_SERVER);
+    }
+
+    // send public key
+    sio::message::list params;
+    params.push(Config::getInstance()->getWalletAddress());
+    params.push(std::string(this->public_key_));
+    proxy_socket_.socket()->emit("newBidder", params);
+}
+
 bool AccountManager::registerNewUser() {
     QString folderContainKeys = QDir::currentPath() + "/keystore";
 
@@ -82,6 +101,44 @@ bool AccountManager::registerNewUser() {
 
     return true;
 }
+
+std::vector<std::string> AccountManager::getAllUserKey() {
+    std::vector<std::string> rsa_keys;
+    try {
+        std::string blockchain_addr = "0xbf011be8b2cee69ef4bd242013377b8945298dde"; // fake
+        std::string blockchain_pass = "123"; // fake
+
+        bool check = blockchain_.UnlockAccount(blockchain_addr, blockchain_pass, 30);
+
+        deal_contract_addr_ = Config::getInstance()->getDealContractAddress();
+        owner_key_addr_ = Config::getInstance()->getOwnerKeyContractAddress();
+
+        std::string get_all_user_id_param = bitmile::blockchain::OwnerKeyContract::GetAllUserId();
+        nlohmann::json result;
+        blockchain_.SendCall(blockchain_addr, Config::getInstance()->getOwnerKeyContractAddress(), get_all_user_id_param, "1",  result);
+
+        // parse result
+        result = bitmile::blockchain::OwnerKeyContract::ParseGetAllUserId(result);
+        std::string rsa_key_data;
+
+        for (nlohmann::json::iterator i = result.begin(); i != result.end(); i++) {
+            nlohmann::json get_RSA_PK_result;
+
+            // get RSA public key from user_id
+            rsa_key_data = bitmile::blockchain::OwnerKeyContract::GetPubKey(*i);
+            blockchain_.SendCall(blockchain_addr, Config::getInstance()->getOwnerKeyContractAddress(), rsa_key_data, "1",  get_RSA_PK_result);
+
+            get_RSA_PK_result = bitmile::blockchain::OwnerKeyContract::ParseGetPubKeyResult(get_RSA_PK_result);
+            rsa_keys.push_back(get_RSA_PK_result["key"]);
+        }
+    }
+    catch (std::exception &e) {
+        std::cout << "AccountManager::getAllUserKey have error " << e.what() << std::endl;
+    }
+
+    return rsa_keys;
+}
+
 void AccountManager::clearCredential(){
     username_ = "";
     password_ = "";
@@ -127,8 +184,40 @@ std::vector<bitmile::db::Document> AccountManager::getSearchedDoc() {
 }
 void AccountManager::search () {
     searched_docs_.clear();
-    std::vector<std::string> keywords (this->keywords_.begin(), this->keywords_.end());
-    socket_manager->search(keywords, searched_docs_);
+    std::vector<std::string> result = this->getAllUserKey();
+
+    // with each public key, encrypt and compare with file server
+    std::vector<std::string> keywords;
+    std::vector<bitmile::db::Document> searched_docs;
+
+    for (std::vector<std::string>::iterator i = result.begin(); i != result.end(); i++) {
+        searched_docs.clear();
+        keywords.clear();
+
+        BIO *bio = BIO_new_mem_buf(i->data(), i->length());
+        RSA *rsa = PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL);
+
+        for (std::set<std::string>::iterator i = keywords_.begin(); i != keywords_.end(); i++) {
+            std::vector<char> encrypted(2048);
+
+            memset(encrypted.data(), '\0', encrypted.size());
+
+            RSA_public_encrypt(i->length(), reinterpret_cast<const unsigned char*>(i->data()), reinterpret_cast<unsigned char*>(&encrypted[0]),
+                                       rsa, RSA_PKCS1_PADDING);
+
+            std::string encrypt_base64(encrypted.data());
+            encrypt_base64 = Utils::convertToBase64(reinterpret_cast<const unsigned char*>(encrypt_base64.data()), encrypt_base64.length());
+
+            keywords.push_back(encrypt_base64);
+        }
+
+        socket_manager->search(keywords, searched_docs);
+
+        for(std::vector<bitmile::db::Document>::iterator j = searched_docs.begin(); j != searched_docs.end(); j++) {
+            std::cout << "have result doc searched " << std::endl;
+            searched_docs_.push_back(*j);
+        }
+    }
 
     if (searched_docs_.size() > 0) {
 
@@ -156,6 +245,8 @@ bool AccountManager::createDeal(std::string blockchain_addr, std::string blockch
         std::string transaction_hash;
         if (check) {
             std::string create_deal_param = bitmile::blockchain::DealContract::CreateDeal(prize, expiredTime.toSecsSinceEpoch(), std::string (public_key_, public_key_len_));
+            std::cout << "create_deal_param " << create_deal_param << std::endl;
+
             nlohmann::json result;
 
             blockchain_.GetBlockNumber("1", result);
