@@ -2,8 +2,8 @@
 
 Config::Config()
 {
-    deal_contract_address_ = "0xf7b53bbb8ce29406a6a65848bc291b518fbdca1d";
-    user_key_contract_address_ = "0xbeb5865637f9860daa9d407e9ad66b531b9f5932";
+    deal_contract_address_ = "0xb6b29ef90120bec597939e0eda6b8a9164f75deb";
+    user_key_contract_address_ = "0x54a3ecc66008a40bd05988272b484c7d5f6359a5";
 }
 
 Config* Config::getInstance() {
