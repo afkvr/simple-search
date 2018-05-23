@@ -29,3 +29,4 @@ std::string Config::getOwnerKeyContractAddress(){
 std::string Config::getWalletAddress() {
     return wallet_address_;
 }
+
