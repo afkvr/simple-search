@@ -84,36 +84,11 @@ else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/..
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/curlcpp/debug/curlcpp.lib
 else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/curlcpp/libcurlcpp.a
 
+unix:!macx: PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/libsioclient_tls.a
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/socket.io/lib/release/ -lsioclient_tls
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/socket.io/lib/debug/ -lsioclient_tls
-else:unix: LIBS += -L$$PWD/../../vendors/socket.io/lib/ -lsioclient_tls
-
-INCLUDEPATH += $$PWD/../../vendors/socket.io/include
-DEPENDPATH += $$PWD/../../vendors/socket.io/include
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/release/libsioclient_tls.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/debug/libsioclient_tls.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/release/sioclient_tls.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/debug/sioclient_tls.lib
-else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/libsioclient_tls.a
-
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/socket.io/lib/release/ -lsioclient
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/socket.io/lib/debug/ -lsioclient
-else:unix: LIBS += -L$$PWD/../../vendors/socket.io/lib/ -lsioclient
-
-INCLUDEPATH += $$PWD/../../vendors/socket.io/include
-DEPENDPATH += $$PWD/../../vendors/socket.io/include
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/release/libsioclient.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/debug/libsioclient.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/release/sioclient.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/debug/sioclient.lib
-else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/libsioclient.a
-
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/curl-7.59.0/build/lib/release/ -lcurl
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/curl-7.59.0/build/lib/debug/ -lcurl
-else:unix: LIBS += -L$$PWD/../../vendors/curl-7.59.0/build/lib/ -lcurl
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/curl-7.59.0/lib/release/ -lcurl
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/curl-7.59.0/lib/debug/ -lcurl
+else:unix: LIBS += -L$$PWD/../../vendors/curl-7.59.0/lib/ -lcurl
 
 INCLUDEPATH += $$PWD/../../vendors/curl-7.59.0/include
 DEPENDPATH += $$PWD/../../vendors/curl-7.59.0/include
@@ -127,31 +102,7 @@ else:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../../build/lib/Debug/ -lb
 CONFIG(release, debug|release): LIBS += -L$$PWD/../../../build/lib/Release/ -lboost_date_time
 else:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../../build/lib/Debug/ -lboost_date_time
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.1.0g/lib/release/ -lcrypto
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.1.0g/lib/debug/ -lcrypto
-else:unix: LIBS += -L$$PWD/../../vendors/openssl_1.1.0g/lib/ -lcrypto
 
-INCLUDEPATH += $$PWD/../../vendors/openssl_1.1.0g/include
-DEPENDPATH += $$PWD/../../vendors/openssl_1.1.0g/include
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/release/libcrypto.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/debug/libcrypto.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/release/crypto.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/debug/crypto.lib
-else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/libcrypto.a
-
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.1.0g/lib/release/ -lssl
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.1.0g/lib/debug/ -lssl
-else:unix: LIBS += -L$$PWD/../../vendors/openssl_1.1.0g/lib/ -lssl
-
-INCLUDEPATH += $$PWD/../../vendors/openssl_1.1.0g/include
-DEPENDPATH += $$PWD/../../vendors/openssl_1.1.0g/include
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/release/libssl.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/debug/libssl.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/release/ssl.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/debug/ssl.lib
-else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.1.0g/lib/libssl.a
 
 
 DISTFILES +=
@@ -170,3 +121,41 @@ else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendo
 else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/release/cryptopp.lib
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/debug/cryptopp.lib
 else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/cryptopp700/libcryptopp.a
+
+
+unix:!macx: LIBS += -L$$PWD/../../vendors/socket.io/lib/ -lsioclient_tls
+
+INCLUDEPATH += $$PWD/../../vendors/socket.io/include
+DEPENDPATH += $$PWD/../../vendors/socket.io/include
+
+unix:!macx: PRE_TARGETDEPS += $$PWD/../../vendors/socket.io/lib/libsioclient_tls.a
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.0.2n/lib/release/ -lssl
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.0.2n/lib/debug/ -lssl
+else:unix: LIBS += -L$$PWD/../../vendors/openssl_1.0.2n/lib/ -lssl
+
+INCLUDEPATH += $$PWD/../../vendors/openssl_1.0.2n/include
+DEPENDPATH += $$PWD/../../vendors/openssl_1.0.2n/include
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/release/libssl.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/debug/libssl.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/release/ssl.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/debug/ssl.lib
+else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/libssl.a
+
+
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.0.2n/lib/release/ -lcrypto
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../vendors/openssl_1.0.2n/lib/debug/ -lcrypto
+else:unix: LIBS += -L$$PWD/../../vendors/openssl_1.0.2n/lib/ -lcrypto
+
+INCLUDEPATH += $$PWD/../../vendors/openssl_1.0.2n/include
+DEPENDPATH += $$PWD/../../vendors/openssl_1.0.2n/include
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/release/libcrypto.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/debug/libcrypto.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/release/crypto.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/debug/crypto.lib
+else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/libcrypto.a
+
+unix:!macx: LIBS += -ldl

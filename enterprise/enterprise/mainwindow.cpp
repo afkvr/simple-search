@@ -93,7 +93,7 @@ void MainWindow::on_new_searchButton_clicked()
 {
     account_manager_->clearKeywords();
     for (QVariantList::iterator i = m_keywords.begin(); i != m_keywords.end(); i++)
-        account_manager_->addKeyword((*i).toString().toLower().toStdString());
+        account_manager_->addKeyword((*i).toString().toStdString());
 
     account_manager_->search();
 }
