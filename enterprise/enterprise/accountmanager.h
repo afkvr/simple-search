@@ -47,9 +47,12 @@ public:
 
     void setSessionPublicKey(std::string& walletID, std::string publickey);
     void onNewDealReply(const std::string& mes, sio::message::ptr const& data);
+    void onNewBidder(const std::string& mess, sio::message::ptr const& data);
 
     bool createDeal(std::string blockchain_addr, std::string blockchain_pass, long long prize, QDateTime expireTime, int& global_id);
 
+    // encrypt data and return base64 format
+    std::string encryptData(std::string publickey, std::string data);
     QString getSecretKey () const;
     QString getPublicKey () const;
 
@@ -60,6 +63,7 @@ public:
 Q_SIGNALS:
     void keywords_array_changed ();
     void search_done ();
+    Q_INVOKABLE void newDealDone ();
 
 private:
 

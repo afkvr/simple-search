@@ -41,11 +41,33 @@ AccountManager::AccountManager(QObject* parent): QObject(parent)
         std::cout << "socket open " << std::endl;
 
     proxy_socket_.socket()->on("newDeal", std::bind( &AccountManager::onNewDealReply, this, std::placeholders::_1, std::placeholders::_2));
+    proxy_socket_.socket()->on("newBidder", std::bind( &AccountManager::onNewBidder, this, std::placeholders::_1, std::placeholders::_2));
 
 }
 
 void AccountManager::onNewDealReply(const std::string& mes, sio::message::ptr const& data){
     qDebug() << QString(mes.c_str()) << " " << QString(data->get_string().c_str());
+    if (QString(data->get_string().c_str()).compare(QString("OK")) == 0) {
+        Q_EMIT newDealDone();
+    }
+}
+
+void AccountManager::onNewBidder(const std::string& mess, sio::message::ptr const& data) {
+    qDebug() << "onNewBidder " << QString(mess.c_str()) << " " << QString(data->get_string().c_str());
+    if (QString(data->get_string().c_str()).compare(QString("OK")) == 0)
+    {
+
+    }
+    else {
+        std::string walletId = Config::getInstance()->getWalletAddress();
+        std::string pk_hex = Utils::convertToHex(reinterpret_cast<unsigned char*> (this->sig_pub_key_), this->sig_pub_key_len_);
+        std::string pri_hex = Utils::convertToHex(reinterpret_cast<unsigned char*> (this->sig_sec_key_), this->sig_sec_key_len_);
+
+        std::cout << "rpi hex " << pri_hex << std::endl;
+        std::cout << "pub hex " << pk_hex << std::endl;
+
+        setSessionPublicKey(walletId, pk_hex);
+    }
 }
 
 AccountManager::~AccountManager() {
@@ -80,15 +102,6 @@ bool AccountManager::authenticate() {
     qDebug() << "success get key";
     qDebug() << "sec: " << QString(Utils::convertToBase64(reinterpret_cast<unsigned char*>(this->secret_key_), this->secret_key_len_).c_str());
     qDebug() << "public key: " << QString(Utils::convertToBase64(reinterpret_cast<unsigned char*> (this->public_key_), this->public_key_len_).c_str());
-
-    std::string walletId = Config::getInstance()->getWalletAddress();
-    std::string pk_hex = Utils::convertToHex(reinterpret_cast<unsigned char*> (this->sig_pub_key_), this->sig_pub_key_len_);
-    std::string pri_hex = Utils::convertToHex(reinterpret_cast<unsigned char*> (this->sig_sec_key_), this->sig_sec_key_len_);
-
-    std::cout << "rpi hex " << pri_hex << std::endl;
-    std::cout << "pub hex " << pk_hex << std::endl;
-
-    setSessionPublicKey(walletId, pk_hex);
     return true;
 }
 
@@ -121,11 +134,25 @@ bool AccountManager::registerNewUser() {
         return false;
     }
 
+    if (!KeyManager::getKey(file_path, passphrase,
+                            &this->secret_key_, this->secret_key_len_,
+                            &this->public_key_, this->public_key_len_,
+                            &this->sig_sec_key_, this->sig_sec_key_len_,
+                            &this->sig_pub_key_, this->sig_pub_key_len_)) {
+        qDebug() << "failed to get key";
+        return false;
+    }
+
+    std::string walletId = Config::getInstance()->getWalletAddress();
+    std::string pk_hex = Utils::convertToHex(reinterpret_cast<unsigned char*> (this->sig_pub_key_), this->sig_pub_key_len_);
+    std::string pri_hex = Utils::convertToHex(reinterpret_cast<unsigned char*> (this->sig_sec_key_), this->sig_sec_key_len_);
+    setSessionPublicKey(walletId, pk_hex);
+
     return true;
 }
 
 std::vector<std::string> AccountManager::getAllUserKey() {
-    std::vector<std::string> rsa_keys;
+    std::vector<std::string> rsa_keys(0);
     try {
         std::string blockchain_addr = "0xc3f59a489644a299fb16b712c5f295f96d6dc0c0"; // fake
         std::string blockchain_pass = "123"; // fake
@@ -152,6 +179,8 @@ std::vector<std::string> AccountManager::getAllUserKey() {
 
             get_RSA_PK_result = bitmile::blockchain::OwnerKeyContract::ParseGetPubKeyResult(get_RSA_PK_result);
             rsa_keys.push_back(get_RSA_PK_result["key"]);
+
+            std::cout << "AccountManager::getAllUserKey public key  " << get_RSA_PK_result["key"]  << std::endl;
         }
     }
     catch (std::exception &e) {
@@ -189,7 +218,6 @@ void AccountManager::removeKeyword(std::string keyword) {
         keywords_.erase(pos);
         Q_EMIT keywords_array_changed();
     }
-
 }
 
 void AccountManager::clearKeywords() {
@@ -208,11 +236,16 @@ void AccountManager::search () {
     searched_docs_.clear();
     std::vector<std::string> result = this->getAllUserKey();
 
+    std::cout << "AccountManager::search length " << result.size() << std::endl;
+
     // with each public key, encrypt and compare with file server
     std::vector<std::string> keywords;
     std::vector<bitmile::db::Document> searched_docs;
 
     for (std::vector<std::string>::iterator i = result.begin(); i != result.end(); i++) {
+        if (*i == "")
+            continue;
+
         searched_docs.clear();
         keywords.clear();
 
@@ -227,8 +260,6 @@ void AccountManager::search () {
             memset(kw_input.data(), '0', rsa_key_size);
             memcpy(kw_input.data(), j->data(), j->length());
 
-            std::cout << "after " << kw_input.data() << std::endl;
-
             std::vector<unsigned char> encrypted(rsa_key_size);
 
             RSA_public_encrypt(RSA_size(rsa),
@@ -240,15 +271,18 @@ void AccountManager::search () {
 
             std::string encrypt_base64;
             encrypt_base64 = Utils::convertToBase64(reinterpret_cast<const unsigned char*>(encrypted.data()), encrypted.size());
-            std::cout << "keyword " << *j << " encrypt and convert to base64 " << encrypt_base64 << std::endl;
 
             keywords.push_back(encrypt_base64);
         }
 
         socket_manager->search(keywords, searched_docs);
-
         for(std::vector<bitmile::db::Document>::iterator k = searched_docs.begin(); k != searched_docs.end(); k++) {
             std::cout << "have result doc searched " << std::endl;
+
+            // encrypt docid with owner publickey
+            std::string docidEncrypt = encryptData(*i, k->GetOwnerDocId());
+            k->SetOwnerDocId(docidEncrypt);
+
             searched_docs_.push_back(*k);
         }
 
@@ -262,6 +296,35 @@ void AccountManager::search () {
     }
 
     Q_EMIT search_done();
+}
+
+std::string AccountManager::encryptData(std::string publickey, std::string data) {
+    BIO *bio = BIO_new_mem_buf(publickey.data(), publickey.length());
+    RSA *rsa = PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL);
+
+    int rsa_key_size = RSA_size(rsa);
+
+    std::vector<unsigned char> kw_input(rsa_key_size);
+    memset(kw_input.data(), '0', rsa_key_size);
+    memcpy(kw_input.data(), data.data(), data.length());
+
+    std::vector<unsigned char> encrypted(rsa_key_size);
+
+    RSA_public_encrypt(RSA_size(rsa),
+                       reinterpret_cast<const unsigned char*>(kw_input.data()),
+                       reinterpret_cast<unsigned char*>(encrypted.data()),
+                       rsa, RSA_NO_PADDING);
+
+    std::cout << "base64 after encript " << QByteArray(reinterpret_cast<char*>(encrypted.data()), encrypted.size()).toBase64().data() << std::endl;
+
+    std::string encrypt_base64;
+    encrypt_base64 = Utils::convertToBase64(reinterpret_cast<const unsigned char*>(encrypted.data()), encrypted.size());
+
+    // clear openssl context
+    RSA_free(rsa);
+    BIO_free(bio);
+
+    return encrypt_base64;
 }
 
 
@@ -339,7 +402,6 @@ bool AccountManager::createDeal(std::string blockchain_addr, std::string blockch
 
         }
 
-
         //send dealId and user list to proxy server
         if (check) {
             nlohmann::json data;
@@ -374,6 +436,7 @@ bool AccountManager::createDeal(std::string blockchain_addr, std::string blockch
             }
             data["userIds"] = nlohmann::json (owner_arr);
             data["listEncDocIds"] = nlohmann::json (doc_id_arr);
+            data["completed"] = "1";
 
             std::string mes = data.dump();
 
