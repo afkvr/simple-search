@@ -68,10 +68,24 @@ AbstractScreen {
             property real commonHeight: height*0.7
 
             CustomizeButton {
+                id: back
+                text: " <- back"
+                anchors.verticalCenter: parent.verticalCenter
+                width: (block2.commonWidth-commonSpacing)/2
+                height: block2.commonHeight
+
+                onControlDownChanged: {
+                        appWindow.currentScreenIndex = appWindow.loginIndex
+                }
+            }
+
+
+            CustomizeButton {
                 id: register
                 text: "register"
                 anchors.verticalCenter: parent.verticalCenter
-                width: block2.commonWidth
+                x: getNextRightPosition(back)
+                width: (block2.commonWidth-commonSpacing)/2
                 height: block2.commonHeight
 
                 onControlDownChanged: {
