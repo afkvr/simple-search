@@ -61,12 +61,12 @@ I. Common Dependencies
 	- cpp-elasticsearch: 
 		+ clone https://github.com/BitMile/cpp-elasticsearch
 		
-   	- openssl 1.1.0g: https://github.com/openssl/openssl
-		+ down and build version 1.1.0g
-		+ create folder openssl_1.1.0g
-		+ copy include/openssl from openssl folder to openssl_1.1.0g
-		+ create folder openssl_1.1.0g/lib/
-		+ copy libcrypto.a, libssl.a, libcryto.so, libcryto.so.1.1, libssl.so, libssl.so.1.1 to lib/
+   	- openssl 1.0.2n: https://github.com/openssl/openssl
+		+ down and build version 1.0.2n
+		+ create folder openssl_1.0.2n
+		+ copy include/openssl from openssl folder to openssl_1.0.2n
+		+ create folder openssl_1.0.2n/lib/
+		+ copy libcrypto.a, libssl.a to lib/
 
 ----------------------------------------
 
@@ -104,7 +104,7 @@ III. Enterprise app
 a. Dependencies
    - Qt 9
    
-   Important: All below lib are built based on opensll_1.1.0g: 
+   Important: All below lib are built based on opensll_1.0.2n: 
    - libcurl 7.59.0
    - curlcpp 
    - cryptopp700
