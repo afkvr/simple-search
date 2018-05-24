@@ -436,7 +436,7 @@ bool AccountManager::createDeal(std::string blockchain_addr, std::string blockch
             }
             data["userIds"] = nlohmann::json (owner_arr);
             data["listEncDocIds"] = nlohmann::json (doc_id_arr);
-            data["completed"] = "1";
+            data["complete"] = "1";
 
             std::string mes = data.dump();
 
