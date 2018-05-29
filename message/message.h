@@ -99,6 +99,7 @@ namespace msg {
     DocQueryReplyMes (MessageType type, const char* dat, size_t size);
     void Serialize (std::vector<char>& return_data);
     void SetDoc (const db::Document& document );
+    db::Document getDoc() const {return doc_;}
   protected:
     void Deserialize (const char* data, size_t size);
     db::Document doc_;

@@ -294,9 +294,6 @@ namespace bitmile {
     void DocQueryMes::Deserialize (const char* dat, size_t size) {
       if (dat == NULL || size == 0) return;
 
-      if (dat[size - 1] != '\0') {
-        return;
-      }
 
       nlohmann::json json_str = nlohmann::json::parse(std::string (dat));
       if (json_str.count ("elastic_id") == 1) {
@@ -327,10 +324,8 @@ namespace bitmile {
     void DocQueryReplyMes::Deserialize (const char* data, size_t size) {
       if (data == NULL || size == 0) return;
 
-      if (data[size - 1] != '\0') return;
-
       nlohmann::json json_str = nlohmann::json::parse (std::string(data));
-
+      std::cout << "DocQueryReplyMes::Deserialize " << json_str.dump() << std::endl;
       doc_.FromJson(json_str);
     }
 

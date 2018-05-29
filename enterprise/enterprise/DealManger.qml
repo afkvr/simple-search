@@ -17,7 +17,7 @@ AbstractScreen {
         anchors.verticalCenter: parent.verticalCenter
         clip:true
 
-        property real spacing: 10
+        property real spacing: 20
         property real itemWidth: (flickable.width - spacing)/2
         property real itemHeight: (flickable.height - spacing)/2
 
@@ -51,15 +51,18 @@ AbstractScreen {
             var dealItem = dealComponent.createObject(content);
             var dealContent = dealList[j];
 
-            dealItem.timeTxt = dealContent.time;
-            dealItem.priceTxt = "" + dealContent.price;
+            dealItem.timeTxt = dealContent.time
+            dealItem.priceTxt = "" + dealContent.price
             dealItem.keywordList = dealContent.keywords
             dealItem.dealOwnerData = dealInfo.getDealOwnerData(dealContent.timestamp)
+            dealItem.dealID = dealContent.deal_id
+            dealItem.payment_status = dealContent.payment_status
 
             dealItem.width = flickable.itemWidth
             dealItem.height = flickable.itemHeight
             dealItem.border.color = dealItemBorderColor
 
+            dealItems.push(dealItem);
         }
 
         var length = 0

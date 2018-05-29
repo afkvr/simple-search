@@ -124,6 +124,7 @@ void ZmqManager::search(std::vector<std::string>& keywords,
                                                    0,
                                                    reinterpret_cast<unsigned char*>(nonce_.data()),
                                                    reinterpret_cast<unsigned char*>(sec_key_.data())) == 0) {
+          std::cout << "search keyword decrypted length " << decrypted_len << std::endl;
           raw_reply.resize (decrypted_len);
     }else {
         qDebug() << "failed to debug";
@@ -135,10 +136,107 @@ void ZmqManager::search(std::vector<std::string>& keywords,
                                        raw_reply.data(),
                                        raw_reply.size());
 
+    std::cout << "ZmqManager::search " << type << endl;
+
     if (reply_mes->Type() == bitmile::msg::MessageType::KEYWORD_QUERY_REPLY) {
         //success get result
         bitmile::msg::KeywordQueryReplyMes* keyword_reply = (bitmile::msg::KeywordQueryReplyMes*) reply_mes;
         results = std::vector<bitmile::db::Document> (keyword_reply->GetDocs());
+    }
+
+    delete reply_mes;
+    return;
+}
+
+void ZmqManager::getData(std::string elastic_id, bitmile::db::Document& result) {
+    if (sec_key_.size() <= 0 || elastic_id.empty()) {
+        return;
+    }
+
+    //create search with keyword message
+    nlohmann::json deserialize_data;
+    deserialize_data["elastic_id"] = elastic_id;
+    std::string dump = deserialize_data.dump();
+
+    bitmile::msg::DocQueryMes queryMes(bitmile::msg::DOC_QUERY, dump.data(), dump.length());
+
+    std::vector <char> mes_data;
+
+    std::vector <char> queryMesDat;
+    queryMes.Serialize(queryMesDat);
+
+    //encrypt data
+    unsigned long long ciphertext_len = queryMesDat.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES;
+
+    std::vector<unsigned char> ciphertext;
+    ciphertext.resize(ciphertext_len);
+    qDebug() << "key: " << QString(Utils::convertToBase64(reinterpret_cast<unsigned char* > (sec_key_.data()), sec_key_.size()).c_str());
+    qDebug() << "nonce: " << QString (Utils::convertToBase64(reinterpret_cast <unsigned char* > (nonce_.data()), nonce_.size()).c_str());
+
+    crypto_aead_xchacha20poly1305_ietf_encrypt(ciphertext.data(), &ciphertext_len,
+                                               reinterpret_cast<unsigned char*> (queryMesDat.data()),
+                                               queryMesDat.size(),
+                                               NULL, 0,
+                                               NULL,
+                                               reinterpret_cast<unsigned char*> (nonce_.data()),
+                                               reinterpret_cast<unsigned char*> (sec_key_.data()));
+
+
+    //create request message
+    mes_data.resize(sizeof (bitmile::msg::MessageType) + ciphertext_len);
+    bitmile::msg::MessageType type = bitmile::msg::MessageType::DOC_QUERY;
+    memcpy (mes_data.data(), &type, sizeof (bitmile::msg::MessageType));
+
+    int offset = sizeof (bitmile::msg::MessageType);
+    memcpy(mes_data.data() + offset, ciphertext.data(), ciphertext_len);
+
+    //send message to server
+    std::vector <char> reply_data;
+    sendMessage(mes_data.data(), mes_data.size(), reply_data);
+
+    //parse reply
+    if (reply_data.size() < sizeof (bitmile::msg::MessageType)) {
+        return;
+    }
+
+    type = bitmile::msg::MessageType::BLANK;
+    memcpy(&type, reply_data.data(), sizeof (bitmile::msg::MessageType));
+
+    offset = sizeof (bitmile::msg::MessageType);
+
+    //decrypt reply
+    unsigned long long decrypted_len = 0;
+    std::vector<char> raw_reply;
+    raw_reply.resize (reply_data.size());
+
+    if (crypto_aead_xchacha20poly1305_ietf_decrypt(reinterpret_cast<unsigned char*> (raw_reply.data()),
+                                                   &decrypted_len,
+                                                   NULL,
+                                                   reinterpret_cast<unsigned char*>(reply_data.data() + offset),
+                                                   reply_data.size() - offset,
+                                                   NULL,
+                                                   0,
+                                                   reinterpret_cast<unsigned char*>(nonce_.data()),
+                                                   reinterpret_cast<unsigned char*>(sec_key_.data())) == 0) {
+        raw_reply.resize (decrypted_len);
+    }else {
+        qDebug() << "failed to debug";
+        return;
+    }
+
+    bitmile::msg::Message* reply_mes =
+            mes_factory_.CreateMessage(type,
+                                       raw_reply.data(),
+                                       raw_reply.size());
+
+    std::cout << "DocHandleRequest successed " << reply_mes->Type() << std::endl;
+
+
+    if (reply_mes->Type() == bitmile::msg::MessageType::DOC_QUERY_REPLY) {
+        //success get result
+        bitmile::msg::DocQueryReplyMes* keyword_reply = (bitmile::msg::DocQueryReplyMes*) reply_mes;
+        result = keyword_reply->getDoc();
+        std::cout << "parse success " << result.ToJson().dump() << std::endl;
     }
 
     delete reply_mes;

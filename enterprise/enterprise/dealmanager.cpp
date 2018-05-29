@@ -79,6 +79,7 @@ void DealManager::updateDealOwnerData() {
     }
 
     m_dealOwnerData = QJsonDocument(dealOwnerArr).toVariant();
+    qDebug() << "DealManager::updateDealOwnerData ";
     Q_EMIT dealOwnerDataChanged(m_dealOwnerData);
 }
 
@@ -128,7 +129,7 @@ QVariant DealManager::getDealOwnerData(qint64 dealTimestamp) {
         dealOwnerArr.append(dealOwnerItem);
         total++;
 
-        // status = 0, -> wait
+        // status = 2, -> wait
         if (dealOwner.status == InternalDB::DEALOWNER_STATUS_VAL_ACCEPT)
             accept++;
         else if (dealOwner.status == InternalDB::DEALOWNER_STATUS_VAL_IGNORE)
@@ -176,12 +177,17 @@ void DealManager::updateDealData() {
         deal.time = queryObj->value(InternalDB::DEAL_TIME_INDEX).toLongLong();
         deal.price = queryObj->value(InternalDB::DEAL_PRICE_INDEX).toDouble();
         deal.keywords = queryObj->value(InternalDB::DEAL_KEYWORDS_INDEX).toString();
+        deal.deal_id =  queryObj->value(InternalDB::DEAL_GLOBAL_ID_INDEX).toLongLong();
+        deal.payment_status = queryObj->value(InternalDB::DEAL_PAYMENT_STATUS_INDEX).toLongLong();
+
         m_dealList.append(deal);
 
         dt = QDateTime::fromMSecsSinceEpoch(deal.time);
         dealItem[DEAL_TIME] = QString("%1").arg(dt.toString("hh:mm:ss dd/MM/yyyy"));
         dealItem[DEAL_PRICE] = deal.price;
         dealItem[DEAL_KEYWORDS] = deal.keywords;
+        dealItem[DEAL_GLOBAL_ID] = deal.deal_id;
+        dealItem[DEAL_PAYMENT_STATUS] = deal.payment_status;
 
         // external value
         dealItem["timestamp"] = deal.time;
@@ -190,7 +196,8 @@ void DealManager::updateDealData() {
 
     m_dealData = QJsonDocument(dealArr).toVariant();
 
-    Q_EMIT dealDataChanged(m_dealOwnerData);
+    qDebug() << "DealManager::updateDealData";
+    Q_EMIT dealDataChanged(m_dealData);
 }
 
 QVariant DealManager::getOwnerData() {

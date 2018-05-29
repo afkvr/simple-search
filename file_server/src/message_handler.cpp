@@ -14,6 +14,7 @@ namespace bitmile {
       break;
     case msg::DOC_QUERY:
       reply = HandleDocQuery (mes);
+      break;
     case msg::BLANK:
       reply = mes_factory_.CreateMessage (msg::MessageType::BLANK, NULL, 0);
       break;
@@ -34,13 +35,13 @@ namespace bitmile {
 
     //send query to database
     db_.QueryDocWithKeywords (keyword_query->GetKeywords(), results);
-    /*
+    
     for (int i = 0; i < results.size(); i++) {
       std::cout << "result " << i << std::endl
                 << "address " << results[i].GetOwnerAddress() << std::endl
                 << "docid: " << results[i].GetOwnerDocId() << std::endl
                 << "elastic id: " <<results[i].GetElasticDocId() << std::endl;
-                }*/
+                }
     //create a reply message
     msg::Message* reply = mes_factory_.CreateMessage (msg::MessageType::KEYWORD_QUERY_REPLY, NULL, 0);
 
@@ -149,10 +150,8 @@ namespace bitmile {
     db::Document result_doc;
     result_doc.SetData(query_file.data(), query_file.size());
 
-    std::string json_str = result_doc.ToJson();
-
-
-    reply = mes_factory_.CreateMessage(msg::MessageType::DOC_QUERY_REPLY, json_str.c_str(), json_str.length() + 1);
+    reply = mes_factory_.CreateMessage(msg::MessageType::DOC_QUERY_REPLY, NULL, 0);
+    (static_cast <msg::DocQueryReplyMes*> (reply))->SetDoc (result_doc);
 
     fin.close();
     return reply;

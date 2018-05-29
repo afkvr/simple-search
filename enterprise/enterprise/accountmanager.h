@@ -7,6 +7,7 @@
 #include "zmq_manager.h"
 #include "utils/utils.h"
 #include "blockchain/blockchain_interface.h"
+#include "internaldb.h"
 #include "config.h"
 
 #include <sio_client.h>
@@ -29,6 +30,7 @@ public:
     AccountManager(QObject* parent = 0);
 
     static AccountManager* getInstance();
+
     //authentication function
     void setUsername (std::string username);
     void setPassword (std::string password_);
@@ -49,24 +51,33 @@ public:
     void onNewDealReply(const std::string& mes, sio::message::ptr const& data);
     void onNewBidder(const std::string& mess, sio::message::ptr const& data);
 
-    bool createDeal(std::string blockchain_addr, std::string blockchain_pass, long long prize, QDateTime expireTime, int& global_id);
+    bool createDeal(std::string blockchain_addr, std::string blockchain_pass, long long prize, QDateTime expireTime, int& new_deal_id);
+
+    bool updateDocDecrypt(unsigned long long deal_id);
+
+    // pay for key
+    Q_INVOKABLE bool payForRequestKey(unsigned long long deal_id);
 
     // encrypt data and return base64 format
     std::string encryptData(std::string publickey, std::string data);
+    std::string decryptData(std::string privateKey, std::string data);
     QString getSecretKey () const;
     QString getPublicKey () const;
 
     QString getUsername() const;
     QString getPassword() const;
+
+    std::string getSecretKeyBin() const {return std::string(secret_key_, secret_key_+ secret_key_len_);}
+    std::string getPublicKeyBin() const {return std::string(public_key_, public_key_ + public_key_len_);}
+
     ~AccountManager();
 
 Q_SIGNALS:
     void keywords_array_changed ();
     void search_done ();
-    Q_INVOKABLE void newDealDone ();
+    Q_INVOKABLE void newDealDone (); 
 
 private:
-
     ZmqManager* socket_manager;
 
     //login page attribute

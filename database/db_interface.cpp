@@ -31,6 +31,8 @@ namespace bitmile{
           json_doc["data"] = b64_str;
           json_doc["data_size"] = data_.size();
 
+
+
           delete[] b64_str;
         }
       }
@@ -149,6 +151,7 @@ namespace bitmile{
         json_source.member ("doc_id");
 
       if (!valid) {
+         std::cout  << " Document::ParseJson not valid " << std::endl;
         return false;
       }
 
@@ -276,9 +279,13 @@ namespace bitmile{
       std::cout << "hit: " << hit_list.str() << std::endl;
 
       while (hit_list_iter != hit_list.end()) {
+        std::cout << "obj data  " << *hit_list_iter << std::endl;
         Document doc;
         if (doc.ParseJson ((*hit_list_iter).getObject())) {
           result.push_back (doc);
+        }
+        else {
+            std::cout << "parse json false " << std::endl;
         }
         ++hit_list_iter;
       }

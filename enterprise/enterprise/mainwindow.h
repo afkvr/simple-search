@@ -49,15 +49,21 @@ public Q_SLOTS:
     void setPassphase (QString passphase);
     void setKeywords(QVariantList keywords);
 
-    void updateDealAnswers (std::vector<int64_t> deal_ids, std::vector<int> answer_numbs);
+    Q_INVOKABLE void updateDealAnswers (unsigned long long deal_ids);
     void updateDealKey (std::vector<int64_t> deal_ids, std::vector<int> key_numbs);
 
     //register page slot
     Q_INVOKABLE bool onRegister();
     Q_INVOKABLE bool onLogin();
 
+    // pay for key
+    Q_INVOKABLE bool onPayForKey(unsigned long long deal_id);
+
     //setting page slot
     Q_INVOKABLE void onLogout();
+
+    // pay for key
+    Q_INVOKABLE bool onUpdatePayDoc(unsigned long long deal_id);
 
 Q_SIGNALS:
     void userNameChanged(QString usernameTxt);
@@ -81,8 +87,10 @@ public Q_SLOTS:
 
     Q_INVOKABLE bool on_new_createDealButton_clicked();
 
+
+
 private:
-    bool insertToInternalDB(int global_id);
+    bool insertToInternalDB(int deal_id);
 
 private:
     // account

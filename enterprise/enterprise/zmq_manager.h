@@ -23,6 +23,8 @@ public:
     void search (std::vector<std::string>& keywords,
                  std::vector<bitmile::db::Document>& result);
 
+    void getData(std::string elastic_id, bitmile::db::Document& result);
+
 private:
     bool initConnection(std::string host_address, std::string host_port);
     bool sendMessage (const char* dat, size_t size, std::vector<char>& reply);

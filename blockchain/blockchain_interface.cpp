@@ -33,7 +33,6 @@ namespace bitmile {
 
 
     bool BlockchainInterface::UnlockAccount (std::string account, std::string passphrase, int time) {
-      std::cout << "BlockchainInterface::UnlockAccount " << account << std::endl;
       nlohmann::json reply = CreateMessage(api_def_[RPC_API::UNLOCK_ACCOUNT], nlohmann::json::array({account, passphrase, time}), "1");
       if (reply.count("result") == 1) {
           if (reply["result"]) {

@@ -9,18 +9,21 @@
 #define DEFAULT_DB_NAME "internal.db"
 
 /* table structure */
-#define OWNER_TABLE "Owner"
+#define OWNER_TABLE "owner"
 #define     OWNER_ADDRESS "address"                     // BLOB             <- TEXT
 
-#define DEAL_TABLE "Deal"
+#define DEAL_TABLE "deal"
 #define     DEAL_PRICE "price"                          // DOUBLE PRECISION
 #define     DEAL_PUBLICKEY "public_key"                 // BLOB             <- BASE64
 #define     DEAL_PRIVATEKEY "private_key"               // BLOB             <- BASE64
 #define     DEAL_KEYWORDS "keywords"                    // BLOB             <- JSON format ["","",...]}
 #define     DEAL_TIME "time"                            // BLOB             <- timestame
-#define     DEAL_GLOBAL_ID "global_id"                  // INT
+#define     DEAL_GLOBAL_ID "deal_id"                    // INT
+#define     DEAL_PAYMENT_STATUS "payment_status"        // INT
+#define         DEAL_PAYMENT_UNSUCCESSED  0
+#define         DEAL_PAYMENT_SUCCESSED   1
 
-#define DEALOWNER_TABLE "DealOwner"
+#define DEALOWNER_TABLE "dealowner"
 #define     DEALOWNER_DEAL_TIME "deal_time"             // BLOB
 #define     DEALOWNER_OWNER_ADDRESS  "owner_address"    // BLOB             <- BASE64
 #define     DEALOWNER_STATUS    "status"                // INT              <- ENUM {dont_accept:0, accept:1, waiting: 2}
@@ -46,7 +49,8 @@ public:
        QString  private_key;
        QString  keywords;
        qint64   time;
-       qint64   global_id;
+       qint64   deal_id;
+       qint64      payment_status;
     };
 
     enum DEAL_PROPERTY_INDEX {
@@ -55,7 +59,8 @@ public:
         DEAL_PRIVATE_KEY_INDEX,
         DEAL_KEYWORDS_INDEX,
         DEAL_TIME_INDEX,
-        DEAL_GLOBAL_ID_INDEX
+        DEAL_GLOBAL_ID_INDEX,
+        DEAL_PAYMENT_STATUS_INDEX
     };
 
     struct Owner {
@@ -69,7 +74,7 @@ public:
     struct DealOwner {
         qint64 deal_time;
         QString owner_address;
-        qint8   status;
+        int   status;
         QString encrypt_data;
         QString decrypt_data;
         QString owner_secret_key;
@@ -114,7 +119,10 @@ public:
     bool insertDealOwnerData(const DealOwner&);
     bool updateDealOwnerData(const DealOwner&);
     bool removeDealOwnerData(const DealOwner&);
+
     DealOwner getDealOwner (const qint64 dealTime, QString owner_address);
+    DealOwner getDealOwner (const QString owner_address);
+    std::vector<DealOwner> getDealOwner (const qint64 dealTime, const int status);
 
     // utils
     bool establiseConnection();
@@ -132,6 +140,7 @@ private:
     QString convertToString(const qint64 arg) {return QString("%1").arg(arg);}
     QString convertToString(const qreal arg) {return QString("%1").arg(arg);}
     QString convertToString(const qint8 arg) {return QString("%1").arg(arg);}
+    QString convertToString(const int arg) {return QString("%1").arg(arg);}
     QString convertToString(const QString arg) {return arg;}
 
 private:

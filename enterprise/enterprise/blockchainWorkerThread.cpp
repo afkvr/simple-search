@@ -18,7 +18,7 @@ BlockchainWorkerThread::BlockchainWorkerThread()
     QMap<qint64, InternalDB::Deal> dealMap;
     InternalDB::Deal deal;
     while (queryObj->next()) {
-        deal.global_id = queryObj->value(InternalDB::DEAL_GLOBAL_ID_INDEX).toLongLong();
+        deal.deal_id = queryObj->value(InternalDB::DEAL_GLOBAL_ID_INDEX).toLongLong();
         deal.time = queryObj->value(InternalDB::DEAL_TIME_INDEX).toLongLong();
         dealMap.insert (deal.time, deal);
     }
@@ -39,7 +39,7 @@ BlockchainWorkerThread::BlockchainWorkerThread()
         dealOwner.owner_secret_key = queryObj->value(InternalDB::DEALOWNER_SECRET_KEY_INDEX).toString();
         dealOwner.status = queryObj->value(InternalDB::DEALOWNER_STATUS_INDEX).toInt();
 
-        deal_ids.push_back(dealMap.find(dealOwner.deal_time).value().global_id);
+        deal_ids.push_back(dealMap.find(dealOwner.deal_time).value().deal_id);
 
         int answer_count = 0;
         if (dealOwner.status != DEALOWNER_STATUS_WAITING) {

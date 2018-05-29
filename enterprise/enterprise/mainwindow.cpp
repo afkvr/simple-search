@@ -54,12 +54,22 @@ bool MainWindow::onLogin()
     InternalDB* db = InternalDB::getInstance();
     db->setSqlDbName(account_manager_->getUsername());
     db->establiseConnection();
+
+    return true;
+}
+
+bool MainWindow::onPayForKey(unsigned long long deal_id) {
+    return account_manager_->payForRequestKey(deal_id);
 }
 
 void MainWindow::onLogout()
 {
     account_manager_->clearCredential();
     InternalDB::getInstance()->disconnect();
+}
+
+bool MainWindow::onUpdatePayDoc(unsigned long long deal_id) {
+    //return account_manager_->updateDocDecrypt(deal_id);
 }
 
 void MainWindow::on_new_keyword_changed() {
@@ -112,14 +122,14 @@ void MainWindow::on_search_done() {
 bool MainWindow::on_new_createDealButton_clicked()
 {
     bool check = true;
-    int global_id = 177; //fake
+    int new_deal_id;
   
-    check &= account_manager_->createDeal(m_blockchainAddr.toStdString(), m_passphase.toStdString(), m_dealPrice, m_expiredTime, global_id);
+    check &= account_manager_->createDeal(m_blockchainAddr.toStdString(), m_passphase.toStdString(), m_dealPrice, m_expiredTime, new_deal_id);
 
     if (!check)
         return false;
 
-    check &= insertToInternalDB(global_id);
+    check &= insertToInternalDB(new_deal_id);
     return check;
 }
 
@@ -216,7 +226,7 @@ void MainWindow::setKeywords(QVariantList keywords) {
     Q_EMIT keywordsChanged(m_keywords);
 }
 
-bool MainWindow::insertToInternalDB(int global_id) {
+bool MainWindow::insertToInternalDB(int deal_id) {
     std::vector<bitmile::db::Document> searched_doc = account_manager_->getSearchedDoc();
 
     // if searched doc is empty , not continue process
@@ -226,10 +236,11 @@ bool MainWindow::insertToInternalDB(int global_id) {
     // insert deal data to db
     InternalDB::Deal deal;
 
-    deal.global_id = global_id;
+    deal.deal_id = deal_id;
     deal.price = m_dealPrice;
     deal.private_key = account_manager_->getSecretKey();
     deal.public_key =  account_manager_->getPublicKey();
+    deal.payment_status = DEAL_PAYMENT_UNSUCCESSED;
 
     // set current timesamp in local device, confirm for change ???
     deal.time = QDateTime::currentMSecsSinceEpoch();
@@ -251,8 +262,7 @@ bool MainWindow::insertToInternalDB(int global_id) {
     InternalDB::DealOwner dealOwner;
 
     for (std::vector<bitmile::db::Document>::iterator i = searched_doc.begin(); i != searched_doc.end(); i++) {
-        owner.address = QString::fromStdString((*i).GetOwnerAddress());
-        qDebug() << owner.address;
+        owner.address = QString::fromStdString((*i).GetOwnerAddress()).toLower();
 
         InternalDB::getInstance()->insertOwnerData(owner);
 
@@ -272,38 +282,72 @@ bool MainWindow::insertToInternalDB(int global_id) {
     return true;
 }
 
-void MainWindow::updateDealAnswers (std::vector<int64_t> deal_ids, std::vector<int> answer_numbs) {
-    if (deal_ids.size() != answer_numbs.size()) {
-        qDebug() << "deal_ids size != answer_numbs size, something went wrong";
-        return;
+void MainWindow::updateDealAnswers (unsigned long long deal_id) {
+    // get num of answer
+    std::string get_answer_num_q = bitmile::blockchain::DealContract::GetNumberOfAnswer(deal_id);
+    unsigned long long numOfAnswer = 0;
+    nlohmann::json ans_num_json;
+
+    if (blockchain_.SendCall(Config::getInstance()->getWalletAddress(), Config::getInstance()->getDealContractAddress(), get_answer_num_q, "1", ans_num_json)) {
+        ans_num_json =  bitmile::blockchain::DealContract::ParseGetNumberOfAnswerResult(ans_num_json);
+        numOfAnswer = ans_num_json["amount"].get<unsigned long long>();
     }
 
-    for (int i = 0; i < deal_ids.size(); i++) {
-        qDebug() << deal_ids[i] << " " << answer_numbs[i];
-        //get answer from blockchain
-        for (int i = 0; i < answer_numbs[i]; i++) {
-            std::string get_answer_q = bitmile::blockchain::DealContract::GetAnswer(deal_ids[i], i);
-            nlohmann::json ans_json;
-            if (blockchain_.SendCall("", Config::getInstance()->getDealContractAddress(), get_answer_q, "1", ans_json)) {
-                nlohmann::json ans = bitmile::blockchain::DealContract::ParseGetAnswer(ans_json);
+    std::cout << "MainWindow::updateDealAnswers answer " << numOfAnswer << std::endl;
+    //get answer from blockchain
+    for (unsigned long long i = 0; i < numOfAnswer; i++) {
+        std::string get_answer_q = bitmile::blockchain::DealContract::GetAnswer(deal_id, i);
+        nlohmann::json ans_json;
 
-                InternalDB* db = InternalDB::getInstance();
-                InternalDB::Deal deal = db->getDeal(deal_ids[i]);
+        if (blockchain_.SendCall(Config::getInstance()->getWalletAddress(), Config::getInstance()->getDealContractAddress(), get_answer_q, "1", ans_json)) {
+           nlohmann::json ans = bitmile::blockchain::DealContract::ParseGetAnswer(ans_json);
 
-                InternalDB::DealOwner dealOwner;// = db->getDealOwner(deal.time, ans["user_address"]);
+           InternalDB* db = InternalDB::getInstance();
+           InternalDB::Deal deal = db->getDeal(deal_id);
 
-                if (dealOwner.status == DEALOWNER_STATUS_WAITING){
-                    if (ans["answer"] == "YES") {
-                        dealOwner.status = DEALOWNER_STATUS_ACCEPT;
-                    }else if (ans["answer"] == "NO"){
-                        dealOwner.status = DEALOWNER_STATUS_DONTACCEPT;
-                    }
+           InternalDB::DealOwner dealOwner = db->getDealOwner(deal.time, QString::fromStdString(ans["user_address"].get<std::string>()));
 
-                    //TODO: get file from fileserver
+           // decrypt data
+           std::string ans_str = ans["answer"];
+           std::vector<unsigned char> decrypt_data(2048);
+           memset(decrypt_data.data(), '\0', decrypt_data.size());
 
-                    db->updateDealOwnerData(dealOwner);
-                }
-            }
+           std::string pk = account_manager_->getPublicKeyBin();
+           std::string sk = account_manager_->getSecretKeyBin();
+
+           std::string raw_encrypt_data;
+           Utils::convertFromHex(ans_str, raw_encrypt_data);
+
+           if (crypto_box_seal_open(reinterpret_cast<unsigned char*>(decrypt_data.data()),
+                                    reinterpret_cast<unsigned char*>(const_cast<char*>(raw_encrypt_data.data())),
+                                    raw_encrypt_data.length(),
+                                    reinterpret_cast< unsigned char*>(const_cast<char*>(pk.data())),
+                                    reinterpret_cast< unsigned char*>(const_cast<char*>(sk.data()))) != 0) {
+               /* message corrupted or not intended for this recipient */
+               std::cout << "message corrupted or not intended for this recipient " << std::endl;
+           }
+
+           std::string res_data(reinterpret_cast<char*>(decrypt_data.data()));
+
+           if (dealOwner.status == DEALOWNER_STATUS_WAITING && res_data.empty()){
+               std::cout << "dealOwner status not WATTING " << std::endl;
+               continue;
+           }
+
+           char answer_chr = res_data.at(res_data.length() -1);
+
+           if (answer_chr == '1') {
+               std::cout << "accept " << std::endl;
+               dealOwner.status = DEALOWNER_STATUS_ACCEPT;
+           }else if (answer_chr == '0'){
+               std::cout << "dont accept " << std::endl;
+               dealOwner.status = DEALOWNER_STATUS_DONTACCEPT;
+           }
+
+           qDebug() << "before update dealOwner to DB " << dealOwner.owner_address;
+
+           //TODO: get file from fileserver
+           db->updateDealOwnerData(dealOwner);
         }
     }
 
@@ -327,13 +371,14 @@ void MainWindow::updateDealKey (std::vector<int64_t> deal_ids, std::vector<int> 
                 InternalDB* db = InternalDB::getInstance();
                 InternalDB::Deal deal = db->getDeal(deal_ids[i]);
 
-                InternalDB::DealOwner dealOwner;// = db->getDealOwner(deal.time, key["user_address"]);
+                InternalDB::DealOwner dealOwner = db->getDealOwner(deal.time, QString::fromStdString(key["user_address"].get<std::string>()));
 
                 if (dealOwner.owner_secret_key == ""){
                     std::string extracted_key = key["key"];
                     dealOwner.owner_secret_key = QString(extracted_key.c_str());
                     std::string extracted_nonce = key["nonce"];
                     dealOwner.nonce = QString (extracted_nonce.c_str());
+
                     //TODO: decrypt file from fileserver
                     db->updateDealOwnerData(dealOwner);
                 }
