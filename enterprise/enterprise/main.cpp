@@ -10,7 +10,8 @@
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    //QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    //QCoreApplication::addLibraryPath("./");
     QGuiApplication app (argc, argv);
 
     QQmlApplicationEngine engine;

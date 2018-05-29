@@ -365,7 +365,7 @@ bool AccountManager::createDeal(std::string blockchain_addr, std::string blockch
 
         std::string transaction_hash;
         if (check) {
-            std::string create_deal_param = bitmile::blockchain::DealContract::CreateDeal(prize, expiredTime.toSecsSinceEpoch(), std::string (public_key_, public_key_len_));
+            std::string create_deal_param = bitmile::blockchain::DealContract::CreateDeal(prize, expiredTime.toMSecsSinceEpoch(), std::string (public_key_, public_key_len_));
             std::cout << "create_deal_param " << create_deal_param << std::endl;
 
             nlohmann::json result;

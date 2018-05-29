@@ -12,6 +12,7 @@ TARGET = enterprise
 TEMPLATE = app
 CONFIG+=c++11
 CONFIG+=no_keywords
+CONFIG+=release
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -159,3 +160,4 @@ else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../.
 else:unix: PRE_TARGETDEPS += $$PWD/../../vendors/openssl_1.0.2n/lib/libcrypto.a
 
 unix:!macx: LIBS += -ldl
+unix:!macx: LIBS += -lsqlite3

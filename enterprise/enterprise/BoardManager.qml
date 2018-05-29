@@ -1,46 +1,31 @@
 import QtQuick 2.2
-import QtQuick.Controls 2.2
+import QtQuick.Controls 1.2
 
 Rectangle {
     color: "white"
-    TabBar {
+    TabView {
         id: tabBar
         anchors.top: parent.top
         width: parent.width
-        height: parent.height * 0.1
-        currentIndex: swipeView.currentIndex
+        height: parent.height
+        currentIndex: 0
 
-        TabButton {
-            text: qsTr("Create Deal")
-        }
-        TabButton {
-            text: qsTr("Deal Manager")
-        }
-        TabButton {
-            text: qsTr("Setting")
-        }
-    }
+        Tab {
+            title: qsTr("CreateDeal")
+            CreateDeal {
 
-    SwipeView {
-        id: swipeView
-        anchors.top: tabBar.bottom
-        width: parent.width
-        height: parent.height - tabBar.height
-        currentIndex: tabBar.currentIndex
-
-        CreateDeal {
-            width: swipeView.width
-            height: swipeView.height
+            }
+        }
+        Tab{
+            title: qsTr("Setting")
+            DealManger {
+            }
         }
 
-        DealManger {
-            width: swipeView.width
-            height: swipeView.height
-        }
-
-        Setting {
-            width: swipeView.width
-            height: swipeView.height
+        Tab {
+            title: qsTr("Setting")
+            Setting {
+            }
         }
     }
 }

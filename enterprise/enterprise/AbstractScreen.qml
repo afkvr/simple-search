@@ -1,6 +1,6 @@
 import QtQuick 2.2
 import QtQuick.Window 2.2
-import QtQuick.Controls 2.2
+import QtQuick.Controls 1.2
 
 // all screens in application must extend AbstractScreen
 // contain common property and functions

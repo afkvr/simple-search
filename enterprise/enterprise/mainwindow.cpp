@@ -10,14 +10,14 @@ MainWindow::MainWindow(QObject *parent) : QObject(parent)
 {
     //get current database info
 
-    blockchain_event_ = new BlockchainWorkerThread();
+    //blockchain_event_ = new BlockchainWorkerThread();
     // for answer event
-    connect (blockchain_event_, SIGNAL (newAnswers),
-             this, SLOT (updateDealAnswers));
-    connect (blockchain_event_, SIGNAL (newKeys),
-             this, SLOT (updateDealKey));
+    //connect (blockchain_event_, SIGNAL (newAnswers),
+    //         this, SLOT (updateDealAnswers));
+    //connect (blockchain_event_, SIGNAL (newKeys),
+    //         this, SLOT (updateDealKey));
 
-    blockchain_event_->start();
+    //blockchain_event_->start();
 
     account_manager_ = AccountManager::getInstance();
 

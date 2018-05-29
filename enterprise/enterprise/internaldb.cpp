@@ -3,6 +3,7 @@
 #include <QSqlDriver>
 #include <QSqlError>
 #include <QDebug>
+#include <iostream>
 
 InternalDB::InternalDB(QObject* parent = 0) : QObject(parent) {
 }
@@ -19,6 +20,14 @@ InternalDB* InternalDB::getInstance() {
 }
 
 bool InternalDB::establiseConnection() {
+    std::cout << "InternalDB::establiseConnection " <<std::endl;
+
+    std::list<QString> listDrive = QSqlDatabase::drivers().toStdList();
+
+    for (std::list<QString>::iterator i = listDrive.begin(); i != listDrive.end(); i++) {
+        std::cout <<  "drive " << i->toStdString() << std::endl;
+    }
+
     if (sqlDbName.isEmpty())
             sqlDbName.append(DEFAULT_DB_NAME);
 
@@ -28,6 +37,10 @@ bool InternalDB::establiseConnection() {
     db.setDatabaseName(sqlDbName);
 
     Q_ASSERT(db.open());
+
+    if (db.open()) {
+        std::cout << "sqlDB open successed " << std::endl;
+    }
 
     // create db if not exists
     sqlQuery = QSqlQuery(db);
