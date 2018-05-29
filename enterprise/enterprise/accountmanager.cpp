@@ -30,7 +30,7 @@ AccountManager::AccountManager(QObject* parent): QObject(parent)
 
     // connect to file server
     // change if ip and port number is wrong
-    socket_manager = new ZmqManager("localhost", "7777");
+    socket_manager = new ZmqManager("192.168.1.167", "7777");
 
     /*std::map<std::string, std::string> config;
     config["secure"] = "true";
@@ -154,8 +154,8 @@ bool AccountManager::registerNewUser() {
 std::vector<std::string> AccountManager::getAllUserKey() {
     std::vector<std::string> rsa_keys(0);
     try {
-        std::string blockchain_addr = "0xc3f59a489644a299fb16b712c5f295f96d6dc0c0"; // fake
-        std::string blockchain_pass = "123"; // fake
+        std::string blockchain_addr = Config::getInstance()->getWalletAddress(); // fake
+        std::string blockchain_pass = Config::getInstance()->getPassPharse(); // fake
 
         bool check = blockchain_.UnlockAccount(blockchain_addr, blockchain_pass, 30);
 
