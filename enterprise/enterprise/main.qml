@@ -222,6 +222,13 @@ ApplicationWindow {
     }
 
     function changeScreen(screenIndex) {
+        if (screenIndex !== 0 &&  screenIndex !== 1) {
+            ipSettingBlock.visible = false
+        }
+        else {
+            ipSettingBlock.visible = true
+        }
+
         loader.width = getLayoutWidth(screenIndex);
         loader.height = getLayoutHeight(screenIndex);
         loader.source = qsTr("qrc:/" + screenList[screenIndex])
