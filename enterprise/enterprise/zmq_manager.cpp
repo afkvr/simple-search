@@ -33,6 +33,7 @@ bool ZmqManager::initConnection(std::string host_address, std::string port) {
 
     //create address;
     std::string address= std::string("tcp://") + host_address + ":" + port;
+    std::cout << "socket zmq " << address << std::endl;
     socket_->setsockopt(ZMQ_SNDTIMEO, 1000);
     socket_->connect(address);
 

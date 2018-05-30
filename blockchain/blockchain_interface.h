@@ -16,6 +16,10 @@ namespace bitmile {
     class BlockchainInterface {
 
     public:
+        void setBlockChainIp(std::string _blockchainIp);
+        void setBlockChainPort(std::string _blockchainPort);
+
+    public:
       enum RPC_API {
         UNLOCK_ACCOUNT,
         CALL,

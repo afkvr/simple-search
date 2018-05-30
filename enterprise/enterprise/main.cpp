@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
     QQmlContext* context = engine.rootContext();
 
     context->setContextProperty("account", mainWindow);
+    context->setContextProperty("accountInfo", mainWindow->getAccountManager());
+
     context->setContextProperty("dealInfo", DealManager::getInstance());
 
     QString uriStr = "Manager";

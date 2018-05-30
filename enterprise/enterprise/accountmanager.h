@@ -23,8 +23,19 @@
 #include <functional>
 
 class AccountManager : public QObject
-{
+{   
     Q_OBJECT
+    Q_PROPERTY(QString proxyIp READ proxyIp WRITE setProxyIp NOTIFY proxyIpChanged)
+    Q_PROPERTY(QString fileServerIp READ fileServerIp WRITE setFileServerIp NOTIFY fileServerIpChanged)
+
+    Q_PROPERTY(QString proxyPort READ proxyPort WRITE setProxyPort NOTIFY proxyPortChanged)
+    Q_PROPERTY(QString fileServerPort READ fileServerPort WRITE setFileServerPort NOTIFY fileServerPortChanged)
+
+    Q_PROPERTY(QString proxyIp READ proxyIp WRITE setProxyIp NOTIFY proxyIpChanged)
+    Q_PROPERTY(QString fileServerIp READ fileServerIp WRITE setFileServerIp NOTIFY fileServerIpChanged)
+
+    Q_PROPERTY(QString blockchainIp WRITE setBlockchainIp)
+    Q_PROPERTY(QString blockchainPort WRITE setBlockchainPort)
 
 public:
     AccountManager(QObject* parent = 0);
@@ -38,6 +49,23 @@ public:
     bool registerNewUser ();
     void clearCredential ();
     std::vector<std::string> getAllUserKey();
+
+    // for proxy and file_server setting
+    void setProxyIp (QString _proxyIp);
+    void setFileServerIp (QString _fileServerIp);
+
+    void setProxyPort (QString _proxyPort);
+    void setFileServerPort (QString _fileServerPort);
+
+    QString proxyIp () const;
+    QString fileServerIp () const;
+
+    QString proxyPort() const;
+    QString fileServerPort() const;
+
+    void setBlockchainIp (QString _blockchainIp);
+    void setBlockchainPort (QString _blockchainPort);
+
 
     //new deal function
     void addKeyword (std::string keyword);
@@ -58,6 +86,9 @@ public:
     // pay for key
     Q_INVOKABLE bool payForRequestKey(unsigned long long deal_id);
 
+    // establisted connection
+    Q_INVOKABLE bool establisConnection();
+
     // encrypt data and return base64 format
     std::string encryptData(std::string publickey, std::string data);
     std::string decryptData(std::string privateKey, std::string data);
@@ -76,6 +107,12 @@ Q_SIGNALS:
     void keywords_array_changed ();
     void search_done ();
     Q_INVOKABLE void newDealDone (); 
+
+    Q_INVOKABLE void proxyIpChanged(QString);
+    Q_INVOKABLE void fileServerIpChanged(QString);
+
+    Q_INVOKABLE void proxyPortChanged(QString);
+    Q_INVOKABLE void fileServerPortChanged(QString);
 
 private:
     ZmqManager* socket_manager;
@@ -108,6 +145,13 @@ private:
 
     //socket for communicate with proxy server
     sio::client proxy_socket_;
+
+    // var for keep setting
+    QString proxyIp_;
+    QString fileServerIp_;
+
+    QString proxyPort_;
+    QString fileServerPort_;
 };
 
 #endif // MainwindowController_H

@@ -38,6 +38,7 @@ public:
     QString blockchainAddr() const;
     QString passphase() const;
     QVariantList keywords() const;
+    AccountManager* getAccountManager() const {return account_manager_;}
 
 public Q_SLOTS:
     void setUsername(QString usernameTxt);

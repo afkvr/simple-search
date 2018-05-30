@@ -103,6 +103,18 @@ AbstractScreen {
 
                         account.usernameTxt = username.text
                         account.passwordTxt = password.text
+
+                        accountInfo.proxyIp = appWindow.proxyIp.text
+                        accountInfo.proxyPort = appWindow.proxyPort.text
+                        accountInfo.fileServerIp = appWindow.fileServerIp.text
+                        accountInfo.fileServerPort = appWindow.fileServerPort.text
+                        accountInfo.blockchainIp = appWindow.blockchainIp.text
+                        accountInfo.blockchainPort = appWindow.blockchainPort.text
+
+                        if (!accountInfo.establisConnection()) {
+                            return;
+                        }
+
                         if (!account.onRegister()) {
                             username.text = ""
                             password.text = ""

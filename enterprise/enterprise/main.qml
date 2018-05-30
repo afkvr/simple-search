@@ -21,6 +21,14 @@ ApplicationWindow {
     property int settingIndex: 5
     property int currentScreenIndex: loginIndex
 
+    // setting
+    property alias proxyIp: proxyIp
+    property alias proxyPort: proxyPort
+    property alias fileServerIp: fileServerIp
+    property alias fileServerPort: fileServerPort
+    property alias blockchainIp: blockchainIp
+    property alias blockchainPort: blockchainPort
+
     onCurrentScreenIndexChanged: {
         changeScreen(currentScreenIndex);
     }
@@ -44,6 +52,140 @@ ApplicationWindow {
             width: getLayoutWidth(loginIndex)
             height: getLayoutHeight(loginIndex)
             source: qsTr("qrc:/" + screenList[loginIndex])
+        }
+
+        // setting
+        AbstractScreen {
+            id: ipSettingBlock
+            width: parent.width * 0.5
+            height: parent.height * 0.2
+            anchors.horizontalCenter: parent.horizontalCenter;
+
+            property real commonSpacing:10
+            property real commonHeightItem: (height-commonSpacing*2) / 3
+
+            Item {
+                id: block1
+                width: parent.width
+                height: ipSettingBlock.commonHeightItem
+
+                Label {
+                    id: proxyIpLB
+                    width: parent.width * 0.2
+                    height: ipSettingBlock.commonHeightItem
+
+                    text: "proxy: "
+                }
+
+                TextField {
+                    id: proxyIp
+                    x: proxyIpLB.x + proxyIpLB.width + 5
+                    width: parent.width * 0.5
+                    font.pixelSize: height * 0.4
+                    height: ipSettingBlock.commonHeightItem
+                    text: "localhost"
+                }
+
+                Label {
+                    id: proxyPortLb
+                    x: proxyIp.x + proxyIp.width + 5
+                    width: 5
+                    height: ipSettingBlock.commonHeightItem
+                    text: " : "
+                }
+
+                TextField {
+                    id: proxyPort
+                    x: proxyPortLb.x + proxyPortLb.width + 5
+                    width: parent.width * 0.2
+                    height: ipSettingBlock.commonHeightItem
+                    font.pixelSize: height * 0.4
+                    text: "3000"
+                }
+            }
+
+            Item {
+                id: block2
+                y: ipSettingBlock.getNextBottomPosition (block1, ipSettingBlock.commonSpacing);
+                width: parent.width
+                height: ipSettingBlock.commonHeightItem
+
+                Label {
+                    id: fileServerIpLB
+                    width: parent.width * 0.2
+                    height: ipSettingBlock.commonHeightItem
+
+                    text: "File Server: "
+                }
+
+                TextField {
+                    id: fileServerIp
+                    x: fileServerIpLB.x + fileServerIpLB.width + 5
+                    width: parent.width * 0.5
+                    font.pixelSize: height * 0.4
+                    height: ipSettingBlock.commonHeightItem
+                    text: "localhost"
+                }
+
+                Label {
+                    id: fileServerPortLb
+                    x: fileServerIp.x + fileServerIp.width + 5
+                    width: 5
+                    height: ipSettingBlock.commonHeightItem
+                    text: " : "
+                }
+
+                TextField {
+                    id: fileServerPort
+                    x: fileServerPortLb.x + fileServerPortLb.width + 5
+                    width: parent.width * 0.2
+                    font.pixelSize: height * 0.4
+                    height: ipSettingBlock.commonHeightItem
+                    text: "7777"
+                }
+            }
+
+
+            Item {
+                y: ipSettingBlock.getNextBottomPosition (block2, ipSettingBlock.commonSpacing);
+                width: parent.width
+                height: ipSettingBlock.commonHeightItem
+
+                Label {
+                    id: blockchainIpLB
+                    width: parent.width * 0.2
+                    height: ipSettingBlock.commonHeightItem
+
+                    text: "blockchain: "
+                }
+
+                TextField {
+                    id: blockchainIp
+                    x: blockchainIpLB.x + blockchainIpLB.width + 5
+                    width: parent.width * 0.5
+                    font.pixelSize: height * 0.4
+                    height: ipSettingBlock.commonHeightItem
+                    text: "192.168.1.74"
+                }
+
+                Label {
+                    id: blockchainPortLb
+                    x: blockchainIp.x + blockchainIp.width + 5
+                    width: 5
+                    height: ipSettingBlock.commonHeightItem
+                    text: " : "
+                }
+
+                TextField {
+                    id: blockchainPort
+                    x: blockchainPortLb.x + blockchainPortLb.width + 5
+                    width: parent.width * 0.2
+                    font.pixelSize: height * 0.4
+                    height: ipSettingBlock.commonHeightItem
+                    text: "8545"
+                }
+            }
+
         }
     }
 

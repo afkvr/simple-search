@@ -5,7 +5,7 @@ AbstractScreen {
     id:root
     visible: true
     property real itemRatio: 0.18
-    property real commonSpacing: root.height * 0.05
+    property real commonSpacing: root.height * 0.02
 
     Rectangle {
         anchors.fill: parent
@@ -87,6 +87,18 @@ AbstractScreen {
 
                     account.usernameTxt = username.text
                     account.passwordTxt = password.text
+
+
+                    accountInfo.proxyIp = appWindow.proxyIp.text
+                    accountInfo.proxyPort = appWindow.proxyPort.text
+                    accountInfo.fileServerIp = appWindow.fileServerIp.text
+                    accountInfo.fileServerPort = appWindow.fileServerPort.text
+                    accountInfo.blockchainIp = appWindow.blockchainIp.text
+                    accountInfo.blockchainPort = appWindow.blockchainPort.text
+
+                    if (!accountInfo.establisConnection()) {
+                        return;
+                    }
 
                     if (!account.onLogin()) {
                         username.text = ""

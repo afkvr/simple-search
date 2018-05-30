@@ -587,5 +587,21 @@ namespace bitmile {
         return result;
     }
 
+    void BlockchainInterface::setBlockChainIp(std::string _blockchainIp) {
+        if (!_blockchainIp.empty()) {
+            return;
+        }
+
+        curl_.add<CURLOPT_URL>(_blockchainIp.data());
+    }
+
+    void BlockchainInterface::setBlockChainPort(std::string _blockchainPort) {
+        if (!_blockchainPort.empty()) {
+            return;
+        }
+
+        curl_.add<CURLOPT_PORT>(std::stoi(_blockchainPort));
+    }
+
   }
 }

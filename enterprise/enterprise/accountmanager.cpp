@@ -5,8 +5,6 @@
 #include <cstdlib>
 #include <bitset>
 
-#define SOCKETIO_SERVER "https://192.168.1.167:3000"
-
 AccountManager* AccountManager::getInstance() {
     static AccountManager* instance = NULL;
 
@@ -27,22 +25,6 @@ AccountManager::AccountManager(QObject* parent): QObject(parent)
 
     public_key_ = NULL;
     public_key_len_ = 0;
-
-    // connect to file server
-    // change if ip and port number is wrong
-    socket_manager = new ZmqManager("192.168.1.167", "7777");
-
-    /*std::map<std::string, std::string> config;
-    config["secure"] = "true";
-    config["agent"] = "https.globalAgent";*/
-
-    proxy_socket_.connect(SOCKETIO_SERVER);
-    if (proxy_socket_.opened())
-        std::cout << "socket open " << std::endl;
-
-    proxy_socket_.socket()->on("newDeal", std::bind( &AccountManager::onNewDealReply, this, std::placeholders::_1, std::placeholders::_2));
-    proxy_socket_.socket()->on("newBidder", std::bind( &AccountManager::onNewBidder, this, std::placeholders::_1, std::placeholders::_2));
-
 }
 
 void AccountManager::onNewDealReply(const std::string& mes, sio::message::ptr const& data){
@@ -108,7 +90,8 @@ bool AccountManager::authenticate() {
 void AccountManager::setSessionPublicKey(std::string& walletID, std::string publickey) {
     // try to connect to socket io server
     while(!proxy_socket_.opened()) {
-        proxy_socket_.connect(SOCKETIO_SERVER);
+        QString proxy = QString("https://%1:%2").arg(proxyIp_, proxyPort_);
+        proxy_socket_.connect(proxy.toStdString());
     }
 
     // send public key
@@ -149,6 +132,63 @@ bool AccountManager::registerNewUser() {
     setSessionPublicKey(walletId, pk_hex);
 
     return true;
+}
+
+void AccountManager::setProxyIp (QString _proxyIp) {
+    if (_proxyIp.isEmpty()) {
+        return;
+    }
+
+    proxyIp_ = _proxyIp;
+}
+
+void AccountManager::setFileServerIp (QString _fileServerIp) {
+    if (_fileServerIp.isEmpty()) {
+        return;
+    }
+
+    fileServerIp_ = _fileServerIp;
+}
+
+void AccountManager::setProxyPort (QString _proxyPort) {
+    if (_proxyPort.isEmpty()) {
+        return;
+    }
+
+    proxyPort_ = _proxyPort;
+}
+
+
+void AccountManager::setFileServerPort (QString _fileServerPort) {
+    if (_fileServerPort.isEmpty()) {
+        return;
+    }
+
+    fileServerPort_ = _fileServerPort;
+}
+
+QString AccountManager::proxyIp () const {
+    return proxyIp_;
+}
+
+QString AccountManager::fileServerIp () const {
+    return fileServerIp_;
+}
+
+QString AccountManager::proxyPort() const {
+    return proxyPort_;
+}
+
+QString AccountManager::fileServerPort() const {
+    return fileServerPort_;
+}
+
+void AccountManager::setBlockchainIp (QString _blockchainIp) {
+    blockchain_.setBlockChainIp(_blockchainIp.toStdString());
+}
+
+void AccountManager::setBlockchainPort (QString _blockchainPort) {
+    blockchain_.setBlockChainPort(_blockchainPort.toStdString());
 }
 
 std::vector<std::string> AccountManager::getAllUserKey() {
@@ -490,6 +530,31 @@ bool AccountManager::createDeal(std::string blockchain_addr, std::string blockch
     } catch (std::exception e) {
         std::cout << "AccountManager::createDeal throw exception " << e.what() << std::endl;
     }
+}
+
+
+bool AccountManager::establisConnection() {
+    // connect to file server
+    if (proxyIp_.isEmpty() || proxyPort_.isEmpty()
+            || fileServerIp_.isEmpty() || fileServerPort_.isEmpty()) {
+        return false;
+    }
+
+    QString proxyIP = QString("https://%1:%2").arg(proxyIp_, proxyPort_);
+    qDebug() << "proxy Ip " << proxyIP;
+
+    socket_manager = new ZmqManager(fileServerIp_.toStdString(), fileServerPort_.toStdString());
+
+    proxy_socket_.connect(proxyIP.toStdString());
+
+    if (!proxy_socket_.opened())
+        return false;
+
+    proxy_socket_.socket()->on("newDeal", std::bind( &AccountManager::onNewDealReply, this, std::placeholders::_1, std::placeholders::_2));
+    proxy_socket_.socket()->on("newBidder", std::bind( &AccountManager::onNewBidder, this, std::placeholders::_1, std::placeholders::_2));
+    qDebug () << "AccountManager::establisConnection success ";
+
+    return true;
 }
 
 bool AccountManager::payForRequestKey(unsigned long long deal_id) {

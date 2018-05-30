@@ -17,7 +17,7 @@ Rectangle {
             }
         }
         Tab{
-            title: qsTr("Setting")
+            title: qsTr("DealManager")
             DealManger {
             }
         }
