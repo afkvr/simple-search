@@ -131,6 +131,7 @@ namespace bitmile {
 
     //get doc from elastic id
     std::ifstream fin (file_path, std::ifstream::binary);
+    
     if (fin.fail()) {
       //something wrong happened, return ERROR message
       reply = mes_factory_.CreateMessage(msg::MessageType::ERROR, NULL, 0);
@@ -152,6 +153,8 @@ namespace bitmile {
 
     reply = mes_factory_.CreateMessage(msg::MessageType::DOC_QUERY_REPLY, NULL, 0);
     (static_cast <msg::DocQueryReplyMes*> (reply))->SetDoc (result_doc);
+
+    std::cout << "MessageHanler::HandleDocQuery content " << result_doc.ToJson().dump() << std::endl;
 
     fin.close();
     return reply;

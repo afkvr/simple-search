@@ -69,7 +69,7 @@ void MainWindow::onLogout()
 }
 
 bool MainWindow::onUpdatePayDoc(unsigned long long deal_id) {
-    //return account_manager_->updateDocDecrypt(deal_id);
+    return account_manager_->updateDocDecrypt(deal_id);
 }
 
 void MainWindow::on_new_keyword_changed() {
@@ -262,6 +262,7 @@ bool MainWindow::insertToInternalDB(int deal_id) {
     InternalDB::DealOwner dealOwner;
 
     for (std::vector<bitmile::db::Document>::iterator i = searched_doc.begin(); i != searched_doc.end(); i++) {
+        std::cout << "Insert to internal DB deal address " << (*i).GetOwnerAddress() << std::endl;
         owner.address = QString::fromStdString((*i).GetOwnerAddress()).toLower();
 
         InternalDB::getInstance()->insertOwnerData(owner);
@@ -302,6 +303,8 @@ void MainWindow::updateDealAnswers (unsigned long long deal_id) {
         if (blockchain_.SendCall(Config::getInstance()->getWalletAddress(), Config::getInstance()->getDealContractAddress(), get_answer_q, "1", ans_json)) {
            nlohmann::json ans = bitmile::blockchain::DealContract::ParseGetAnswer(ans_json);
 
+           std::cout << "MainWindow::updateDealAnswers get answer response " << ans.dump() << std::endl;
+
            InternalDB* db = InternalDB::getInstance();
            InternalDB::Deal deal = db->getDeal(deal_id);
 
@@ -334,17 +337,18 @@ void MainWindow::updateDealAnswers (unsigned long long deal_id) {
                continue;
            }
 
-           char answer_chr = res_data.at(res_data.length() -1);
+           int accept_val = std::stoi(res_data.substr(res_data.length() -1, 1));
+           std::cout << "accept value " << accept_val << std::endl;
 
-           if (answer_chr == '1') {
+           if (accept_val == 1) {
                std::cout << "accept " << std::endl;
                dealOwner.status = DEALOWNER_STATUS_ACCEPT;
-           }else if (answer_chr == '0'){
+           } else if (accept_val == 0){
                std::cout << "dont accept " << std::endl;
                dealOwner.status = DEALOWNER_STATUS_DONTACCEPT;
            }
 
-           qDebug() << "before update dealOwner to DB " << dealOwner.owner_address;
+           std::cout << "before update dealOwner to DB " << dealOwner.owner_address.toStdString() << std::endl;
 
            //TODO: get file from fileserver
            db->updateDealOwnerData(dealOwner);

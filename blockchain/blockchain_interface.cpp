@@ -404,10 +404,11 @@ namespace bitmile {
             data = data.substr(2, data.length() - 2);
 
             std::string user_address = data.substr(0, 32 * 2);
-            result["user_address"] = "0x" + Utils::trimZeroLead(user_address);
+            result["user_address"] = "0x" + user_address.erase(0, 24);
 
             long long answer_offset;
             Utils::convertFromHex(data.substr(32 * 2, 32 * 2), answer_offset);
+
             long long answer_len;
             Utils::convertFromHex(data.substr(answer_offset * 2, 32 * 2), answer_len);
 

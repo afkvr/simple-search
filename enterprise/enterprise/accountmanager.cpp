@@ -657,6 +657,7 @@ bool AccountManager::updateDocDecrypt(unsigned long long deal_id) {
         std::cout << result.dump() << std::endl;
 
         int amount = result["amount"].get<int>();
+        std::cout <<  "AccountManager::updateDocDecrypt amout " << amount << std::endl;
 
         std::string rsa_key_data_req;
 
