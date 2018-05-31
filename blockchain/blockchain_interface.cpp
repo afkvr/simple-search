@@ -4,7 +4,7 @@ namespace bitmile {
   namespace blockchain {
 
     BlockchainInterface::BlockchainInterface () {
-      curl_.add<CURLOPT_URL>("http://192.168.1.167");
+      curl_.add<CURLOPT_URL>("http://192.168.1.74");
       curl_.add<CURLOPT_PORT>(8545);
     }
 
@@ -588,18 +588,20 @@ namespace bitmile {
     }
 
     void BlockchainInterface::setBlockChainIp(std::string _blockchainIp) {
-        if (!_blockchainIp.empty()) {
+        if (_blockchainIp.empty()) {
             return;
         }
 
+        std::cout << "BlockchainInterface::setBlockChainIp " << _blockchainIp << std::endl;
         curl_.add<CURLOPT_URL>(_blockchainIp.data());
     }
 
     void BlockchainInterface::setBlockChainPort(std::string _blockchainPort) {
-        if (!_blockchainPort.empty()) {
+        if (_blockchainPort.empty()) {
             return;
         }
 
+        std::cout << "BlockchainInterface::setBlockChainPort " << std::stoi(_blockchainPort) << std::endl;
         curl_.add<CURLOPT_PORT>(std::stoi(_blockchainPort));
     }
 
