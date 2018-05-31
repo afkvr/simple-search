@@ -59,7 +59,7 @@ namespace bitmile{
       }
 
       if (doc.find ("data") != doc.end()) {
-        if (doc.count ("data_size") != 1 || doc.count("keywords") != 1) {
+        if (doc.count ("data_size") != 1) {
           return false;
         }
         //get base 64 string

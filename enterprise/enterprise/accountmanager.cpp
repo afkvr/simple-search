@@ -647,7 +647,6 @@ bool AccountManager::updateDocDecrypt(unsigned long long deal_id) {
         owner_key_addr_ = Config::getInstance()->getOwnerKeyContractAddress();
 
         std::string get_all_user_id_param = bitmile::blockchain::DealContract::GetNumberOfKey(deal_id);
-        std::cout << "get_num_of_key hex " << get_all_user_id_param << std::endl;
 
         nlohmann::json result;
         blockchain_.SendCall(blockchain_addr, Config::getInstance()->getDealContractAddress(), get_all_user_id_param, "1",  result);
@@ -657,7 +656,6 @@ bool AccountManager::updateDocDecrypt(unsigned long long deal_id) {
         std::cout << result.dump() << std::endl;
 
         int amount = result["amount"].get<int>();
-        std::cout <<  "AccountManager::updateDocDecrypt amout " << amount << std::endl;
 
         std::string rsa_key_data_req;
 
@@ -681,11 +679,9 @@ bool AccountManager::updateDocDecrypt(unsigned long long deal_id) {
 
             std::string encrypt_sk_key_bin;
             std::string encrypt_nonce_key_bin;
-            //std::strining raw_encrypt_doc_data;
 
             Utils::convertFromHex(answer["key"], encrypt_sk_key_bin);
             Utils::convertFromHex(answer["nonce"], encrypt_nonce_key_bin);
-            //Utils::convertFromHex(answer["doc_id"]);
 
             std::string owner_sk;
             std::string owner_nonce;
@@ -736,7 +732,7 @@ bool AccountManager::updateDocDecrypt(unsigned long long deal_id) {
             // decrypt data
             std::string doc_data_base64 = answer["doc_id"].get<std::string>();
 
-            // get data from file server
+
             bitmile::db::Document dealOwner_db;
             socket_manager->getData(dealOwner.elastic_id.toStdString(), dealOwner_db);
 
@@ -744,34 +740,6 @@ bool AccountManager::updateDocDecrypt(unsigned long long deal_id) {
             std::cout << "raw doc data " << raw_doc_data << std::endl;
 
             unsigned long long decrypted_len = 0;
-
-            std::cout << "sk length " << owner_sk.length() << std::endl;
-            std::cout << "real sk length " << crypto_aead_xchacha20poly1305_ietf_KEYBYTES << std::endl;
-
-            std::cout << "nonce length " << owner_nonce.length() << std::endl;
-            std::cout << "real nonce length " << crypto_aead_xchacha20poly1305_ietf_NPUBBYTES << std::endl;
-
-            //std::string owner_nonce_key_hex = Utils::convertToHex(reinterpret_cast<unsigned char*>(const_cast<char*>(owner_nonce.data())), owner_nonce.length());
-            //std::string owner_sk_hex= Utils::convertToHex(reinterpret_cast<unsigned char*>(const_cast<char*>(owner_sk.data())), owner_sk.length());
-
-            std::string owner_nonce_key_base64 = Utils::convertToBase64(reinterpret_cast<unsigned char*>(const_cast<char*>(owner_nonce.data())), owner_nonce.length());
-            std::string owner_sk_64= Utils::convertToBase64(reinterpret_cast<unsigned char*>(const_cast<char*>(owner_sk.data())), owner_sk.length());
-
-            std::cout << "owner_sk_key_hex " << owner_sk_64 << std::endl;
-            std::cout << "owner_nonce_hex " << owner_nonce_key_base64 << std::endl;
-
-            //std::cout << "owner_sk_key_hex " << owner_sk_hex << std::endl;
-            //std::cout << "owner_nonce_hex " << owner_nonce_key_hex << std::endl;
-
-            // test
-            std::string fserver_key_base64 = "M4mKWCmS6hlLOk92AjfVR9oDwFVDwXAqqDJcLyitWGw=";
-            std::string fserver_nonce_base64 = "KCOTMhjfVJ0k4/4C9KC53cq0Se5VLb7G";
-
-            owner_nonce = Utils::convertFromB64ToBin(fserver_nonce_base64.data(), fserver_nonce_base64.length());
-            owner_sk    = Utils::convertFromB64ToBin(fserver_key_base64.data(), fserver_key_base64.length());
-
-            std::cout << "leng of owner nonce " << owner_nonce.length() << std::endl;
-            std::cout << "leng of owner_sk  " << owner_sk.length() << std::endl;
 
             if (crypto_aead_xchacha20poly1305_ietf_decrypt(reinterpret_cast<unsigned char*> (decrypt_data.data()),
                                                                &decrypted_len,

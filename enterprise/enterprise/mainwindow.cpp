@@ -69,7 +69,8 @@ void MainWindow::onLogout()
 }
 
 bool MainWindow::onUpdatePayDoc(unsigned long long deal_id) {
-    return account_manager_->updateDocDecrypt(deal_id);
+   //return account_manager_->updateDocDecrypt(deal_id); // <== logic crash in here
+    return false;
 }
 
 void MainWindow::on_new_keyword_changed() {

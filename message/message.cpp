@@ -325,8 +325,8 @@ namespace bitmile {
       if (data == NULL || size == 0) return;
 
       nlohmann::json json_str = nlohmann::json::parse (std::string(data));
-      std::cout << "DocQueryReplyMes::Deserialize " << json_str.dump() << std::endl;
       doc_.FromJson(json_str);
+      std::cout << "DocQueryReplyMes::Deserialize " << doc_.ToJson().dump() << std::endl;
     }
 
     void DocQueryReplyMes::SetDoc (const db::Document& document) {

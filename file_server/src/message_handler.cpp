@@ -120,6 +120,7 @@ namespace bitmile {
     reply = mes_factory_.CreateMessage (msg::MessageType::ERROR, NULL, 0);
     return reply;
   }
+  
 
   msg::Message* MessageHandler::HandleDocQuery (msg::Message* doc_query_mes) {
     msg::DocQueryMes* query_mes = static_cast<msg::DocQueryMes*> (doc_query_mes);
@@ -150,11 +151,11 @@ namespace bitmile {
 
     db::Document result_doc;
     result_doc.SetData(query_file.data(), query_file.size());
+    
+    std::string reply_str = result_doc.ToJson().dump();
+    std::cout << "MessageHandle::HandleDocQuery json data " <<  reply_str << std::endl;
 
-    reply = mes_factory_.CreateMessage(msg::MessageType::DOC_QUERY_REPLY, NULL, 0);
-    (static_cast <msg::DocQueryReplyMes*> (reply))->SetDoc (result_doc);
-
-    std::cout << "MessageHanler::HandleDocQuery content " << result_doc.ToJson().dump() << std::endl;
+    reply = mes_factory_.CreateMessage(msg::MessageType::DOC_QUERY_REPLY, reply_str.c_str(), reply_str.length() + 1);
 
     fin.close();
     return reply;

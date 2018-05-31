@@ -230,14 +230,10 @@ void ZmqManager::getData(std::string elastic_id, bitmile::db::Document& result) 
                                        raw_reply.data(),
                                        raw_reply.size());
 
-    std::cout << "DocHandleRequest successed " << reply_mes->Type() << std::endl;
-
-
     if (reply_mes->Type() == bitmile::msg::MessageType::DOC_QUERY_REPLY) {
         //success get result
         bitmile::msg::DocQueryReplyMes* keyword_reply = (bitmile::msg::DocQueryReplyMes*) reply_mes;
         result = keyword_reply->getDoc();
-        std::cout << "parse success " << result.ToJson().dump() << std::endl;
     }
 
     delete reply_mes;
